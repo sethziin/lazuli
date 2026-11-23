@@ -416,7 +416,8 @@
   <Style Selector="Button.attach">
     <Setter Property="Background" Value="{StaticResource Clear}" />
     <Setter Property="Foreground" Value="{StaticResource Text}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineStrong}" />
+    <!-- sem contorno parado: a borda (mesma espessura, transparente) só aparece no hover, sem mexer no tamanho -->
+    <Setter Property="BorderBrush" Value="{StaticResource Clear}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Padding" Value="12,0,14,0" />
@@ -427,14 +428,13 @@
   </Style>
   <Style Selector="Button.attach:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{StaticResource Hover}" />
-    <Setter Property="BorderBrush" Value="#434349" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineStrong}" />
   </Style>
   <Style Selector="Button.attach:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{StaticResource Active}" />
   </Style>
   <Style Selector="Button.attach.on">
     <Setter Property="Background" Value="{StaticResource OkSoft}" />
-    <Setter Property="BorderBrush" Value="{StaticResource OkLine}" />
     <Setter Property="Foreground" Value="{StaticResource Ok}" />
   </Style>
   <Style Selector="Button.attach.on:pointerover /template/ ContentPresenter">
