@@ -27,6 +27,18 @@ public static class ThemeManager
     ];
 
     public const string Custom = "Custom";
+
+    /// <summary>Imagem de fundo padrão, embutida no exe (Assets\default-background.jpg). Não é um arquivo em disco.</summary>
+    public const string BuiltinBackground = "builtin:default";
+    private static readonly Uri BuiltinUri = new("avares://Lazuli/Assets/default-background.jpg");
+    public static bool IsBuiltin(string? name) => name == BuiltinBackground;
+
+    /// <summary>A imagem existe? (embutida sempre; arquivo, se ainda está na pasta de dados)</summary>
+    private static bool ImageExists(string name)
+    {
+        if (IsBuiltin(name)) return true;
+        try { return File.Exists(ImagePath(name)); } catch { return false; }
+    }
     public const double MinDim = 0.70, MaxDim = 0.97;
 
     /// <summary>Imagem de fundo carregada (reduzida), ou null.</summary>
@@ -104,7 +116,7 @@ public static class ThemeManager
         var (bg, accent) = Resolve(s);
         var white = Colors.White;
         // só trata como "com imagem" se o arquivo existe e não falhou ao abrir (senão as superfícies ficariam translúcidas sobre nada)
-        var useImage = s.HasBackgroundImage && s.BackgroundImage != _failedImage && File.Exists(ImagePath(s.BackgroundImage!));
+        var useImage = s.HasBackgroundImage && s.BackgroundImage != _failedImage && ImageExists(s.BackgroundImage!);
         var dim = double.IsFinite(s.ImageDim) ? Math.Clamp(s.ImageDim, MinDim, MaxDim) : 0.85;
         byte A(double v) => (byte)Math.Round(255 * v);
 
@@ -165,6 +177,11 @@ public static class ThemeManager
         {
             try
             {
+                if (IsBuiltin(name))
+                {
+                    using var asset = Avalonia.Platform.AssetLoader.Open(BuiltinUri);
+                    return new Bitmap(asset); // já é pequena; não ampliar
+                }
                 var path = ImagePath(name);
                 if (!File.Exists(path)) return null;
                 using var fs = File.OpenRead(path);

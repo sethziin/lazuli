@@ -105,6 +105,7 @@ public partial class MainViewModel : ObservableObject
     public void StartTargetWatch()
     {
         if (_targetTimer is not null) return;
+        ApplyMultiClient(announce: false);
         _ = PollTarget();
         _targetTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _targetTimer.Tick += async (_, _) => await PollTarget();
@@ -127,10 +128,66 @@ public partial class MainViewModel : ObservableObject
                 Log(LogLevel.Warning, running ? "Connection lost." : "Roblox closed: detached.");
                 OnPropertyChanged(nameof(Status));
             }
+            if (Settings.MultiClient && !Services.MultiClient.IsHeld) ApplyMultiClient(announce: true); // um Roblox já aberto segurava o mutex: tenta de novo agora
             await RefreshClients();
+            if (Settings.AutoAttach) await AutoAttachNew();
         }
         catch { /* próxima volta tenta de novo */ }
         finally { System.Threading.Volatile.Write(ref _watching, 0); }
+    }
+
+    private bool _multiWaitLogged;
+
+    /// <summary>Liga/desliga o mutex de várias janelas conforme a configuração.</summary>
+    private void ApplyMultiClient(bool announce)
+    {
+        if (!Settings.MultiClient)
+        {
+            Services.MultiClient.Disable();
+            _multiWaitLogged = false;
+            return;
+        }
+        if (Services.MultiClient.Enable())
+        {
+            if (announce) Log(LogLevel.Info, "Multi client on: new Roblox windows can open alongside the others.");
+            _multiWaitLogged = false;
+        }
+        else if (!_multiWaitLogged)
+        {
+            _multiWaitLogged = true;
+            Log(LogLevel.Warning, "Multi client: a Roblox window is already open and holds the single-instance lock. Close all Roblox windows; it turns on by itself.");
+        }
+    }
+
+    private readonly HashSet<int> _autoAttachDone = [];
+    private readonly Dictionary<int, int> _autoAttachTries = [];
+
+    /// <summary>Auto attach: anexa clientes novos sozinho (até 3 tentativas por janela). Se você soltar o attach manualmente, não volta a anexar essa janela.</summary>
+    private async Task AutoAttachNew()
+    {
+        // esquece janelas que já fecharam (o Windows reaproveita PIDs; sem isso uma janela nova poderia nunca ser anexada)
+        var alive = Clients.Select(c => c.Pid).ToHashSet();
+        _autoAttachDone.RemoveWhere(p => !alive.Contains(p));
+        foreach (var gone in _autoAttachTries.Keys.Where(p => !alive.Contains(p)).ToList()) _autoAttachTries.Remove(gone);
+        if (IsAttaching || IsRunning || !IsTargetRunning) return;
+        var fresh = Clients.Where(c => !c.IsAttached && !_autoAttachDone.Contains(c.Pid)).Select(c => c.Pid).ToList();
+        if (fresh.Count == 0) return;
+        foreach (var pid in fresh)
+        {
+            var n = _autoAttachTries.GetValueOrDefault(pid) + 1;
+            _autoAttachTries[pid] = n;
+            if (n >= 3) _autoAttachDone.Add(pid);
+        }
+        if (!IsAttached) { await AttachCommand.ExecuteAsync(null); }
+        else
+        {
+            IsAttaching = true;
+            try { foreach (var l in await _session.AttachAsync()) Log(l.Level, l.Text, l.Time); }
+            catch (Exception ex) { Log(LogLevel.Error, ex.Message); }
+            finally { IsAttaching = false; OnPropertyChanged(nameof(Status)); }
+            await RefreshClients();
+        }
+        foreach (var c in Clients.Where(c => c.IsAttached)) _autoAttachDone.Add(c.Pid);
     }
 
     public string Status => _session.StatusText;
@@ -143,8 +200,6 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>Disparado quando o editor precisa recarregar o texto da aba atual.</summary>
     public event Action? EditorReloadRequested;
-    /// <summary>A janela principal abre o diálogo de configurações ao receber este evento.</summary>
-    public event Action? SettingsRequested;
     public event Action? OpenFileRequested;
     public event Action? FindRequested;
     public event Action? ToggleCommentRequested;
@@ -169,6 +224,7 @@ public partial class MainViewModel : ObservableObject
         Settings = settings;
         // grava as configurações agrupando mudanças seguidas (menos escrita em disco, bom em HD lento)
         Settings.PropertyChanged += (_, _) => { if (PersistenceEnabled) ScheduleSettingsSave(); };
+        Settings.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(AppSettings.MultiClient)) ApplyMultiClient(announce: true); };
         BuildCommands(); // a lista de scripts só é lida quando a barra Scripts abre (EnsureLibrary)
 
         // layout simples: sem Início e sem painéis laterais (só abas, editor e ações)
@@ -224,7 +280,7 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand] private void ToggleLibrary() => LibraryOpen = !LibraryOpen;
     [RelayCommand] private void ToggleConsole() => ConsoleOpen = !ConsoleOpen;
-    [RelayCommand] private void OpenSettings() => SettingsRequested?.Invoke();
+    [RelayCommand] private void OpenSettings() => SettingsOpen = !SettingsOpen;
 
     // ---------- Biblioteca ----------
 
@@ -239,7 +295,8 @@ public partial class MainViewModel : ObservableObject
         try
         {
             await Task.Delay(400, cts.Token);
-            Storage.SaveSettings(Settings);
+            // confere de novo: o modo captura desliga a gravação depois de criar o VM, e uma gravação já agendada sobrescrevia as configurações reais
+            if (PersistenceEnabled) Storage.SaveSettings(Settings);
         }
         catch (TaskCanceledException) { /* uma mudança mais nova reagendou */ }
     }
@@ -570,7 +627,7 @@ public partial class MainViewModel : ObservableObject
             new("Increase font", "Ctrl +", () => Zoom(+1)),
             new("Decrease font", "Ctrl -", () => Zoom(-1)),
             new("Reset font", "Ctrl 0", () => ZoomReset()),
-            new("Settings", "Ctrl+,", () => SettingsRequested?.Invoke()),
+            new("Settings", "Ctrl+,", () => SettingsOpen = true),
         ];
     }
 

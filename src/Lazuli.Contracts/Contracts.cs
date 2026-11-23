@@ -56,5 +56,5 @@ public interface IRunSession
 
     /// <summary>Encerra processos do alvo (null = todos). Só pode mexer no processo do alvo, nunca em outros programas.</summary>
     Task<IReadOnlyList<LogLine>> KillAsync(IReadOnlyCollection<int>? pids, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<LogLine>>([new(DateTime.Now, LogLevel.Warning, "Este backend não encerra o alvo.")]);
+        Task.FromResult<IReadOnlyList<LogLine>>([new(DateTime.Now, LogLevel.Warning, "This backend can't close the target.")]);
 }

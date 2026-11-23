@@ -22,6 +22,10 @@ public partial class App : Application
         // erro numa ação da tela: registra e segue (um clique com problema não deve derrubar o app inteiro)
         Dispatcher.UIThread.UnhandledException += (_, e) => { CrashLog.Write("interface", e.Exception); e.Handled = true; };
         ThemeManager.Attach(Program.EarlySettings); // cores e imagem de fundo escolhidas, antes de qualquer janela aparecer
+#if DEBUG
+        // LAZULI_SHOT_DEFAULTS=1: captura com o tema e a imagem padrão (como numa instalação nova)
+        if (Environment.GetEnvironmentVariable("LAZULI_SHOT_DEFAULTS") == "1") ThemeManager.Attach(new AppSettings());
+#endif
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
 #if DEBUG
@@ -109,7 +113,7 @@ public partial class App : Application
             else
             {
                 desktop.MainWindow = BuildMain();
-                if (UpdateConfig.Enabled) // sem splash: procura depois de abrir e oferece por cima
+                if (AutoCheckEnabled) // sem splash: procura depois de abrir e oferece por cima
                     desktop.MainWindow.Opened += (_, _) => _ = OfferWhenReadyAsync(desktop, CheckForUpdateAsync());
             }
         }
@@ -131,7 +135,7 @@ public partial class App : Application
 
             // procura atualização em paralelo com a montagem da janela principal (não atrasa a abertura)
             Task<UpdateInfo?>? check = null;
-            if (UpdateConfig.Enabled)
+            if (AutoCheckEnabled)
             {
                 splash.SetStatus("Checking for updates…");
                 check = CheckForUpdateAsync();
@@ -169,6 +173,25 @@ public partial class App : Application
     }
 
     private static readonly Lazy<UpdateService> UpdateSvc = new(() => new UpdateService());
+
+    /// <summary>Procura atualização ao abrir só se a configuração "Auto update" estiver ligada.</summary>
+    private static bool AutoCheckEnabled => UpdateConfig.Enabled && Program.EarlySettings.AutoUpdate;
+
+    /// <summary>Botão "Check now" das configurações: procura agora e, se houver versão nova, abre a janela de atualização. Devolve o texto do resultado.</summary>
+    internal static async Task<string> CheckNowAsync()
+    {
+        if (!UpdateConfig.Enabled) return "Updates are turned off in this build.";
+        try
+        {
+            var info = await UpdateSvc.Value.CheckAsync(CancellationToken.None);
+            if (info is null) return "You're up to date.";
+            if (await RunUpdateWindowAsync(info) is UpdateOutcome.Restarting or UpdateOutcome.Quit
+                && Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime d)
+                d.Shutdown();
+            return $"Version {info.VersionText} is available.";
+        }
+        catch (Exception ex) { return "Couldn't check for updates: " + ex.Message; }
+    }
 
     /// <summary>Procura atualização sem nunca atrapalhar a abertura: qualquer falha (sem internet, servidor fora) vira "nada novo".</summary>
     private static async Task<UpdateInfo?> CheckForUpdateAsync()
@@ -263,14 +286,8 @@ public partial class App : Application
             }
             if (views.FirstOrDefault(v => v.StartsWith("settings")) is { } view)
             {
-                var sw = new SettingsWindow
-                {
-                    DataContext = vm, WindowStartupLocation = WindowStartupLocation.Manual,
-                    Position = new PixelPoint(-30000, -30000), ShowActivated = false,
-                };
-                sw.Show();
-                if (int.TryParse(view.AsSpan("settings".Length), out var page)) sw.ShowPage(page);
-                target = sw;
+                vm.SettingsOpen = true;
+                if (int.TryParse(view.AsSpan("settings".Length), out var page)) window.SettingsPanel.ShowPage(page);
             }
             await Task.Delay(1200);
             await Dispatcher.UIThread.InvokeAsync(() =>

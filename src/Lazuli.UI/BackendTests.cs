@@ -93,7 +93,7 @@ public static class BackendTests
         var d2 = BackendCatalog.Discover(rootBad);
         Check("descoberta: pastas ruins viram problemas, a boa continua", d2.Backends.Count == 1 && d2.Problems.Count == 4, $"{d2.Backends.Count}/{d2.Problems.Count}");
         Check("descoberta: contrato diferente é avisado com as duas versões", d2.Problems.Any(p => p.Message.Contains("v99") && p.Message.Contains($"v{ContractInfo.Version}")));
-        Check("descoberta: id repetido é ignorado", d2.Problems.Any(p => p.Message.Contains("já existe")));
+        Check("descoberta: id repetido é ignorado", d2.Problems.Any(p => p.Message.Contains("already exists")));
 
         // ---------- integridade ----------
         var okEntry = d1.Backends[0];
@@ -105,23 +105,23 @@ public static class BackendTests
         var bytes = File.ReadAllBytes(dllPath);
         bytes[^1] ^= 0xFF;
         File.WriteAllBytes(dllPath, bytes);
-        Check("integridade: 1 byte trocado é detectado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(tamper))) is { } e2 && e2.Contains("Integridade"), Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(tamper))));
+        Check("integridade: 1 byte trocado é detectado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(tamper))) is { } e2 && e2.Contains("Integrity"), Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(tamper))));
 
         var missing = Path.Combine(work, "t-faltando");
         CopyDir(Path.Combine(rootOk, "fixture"), missing);
         File.Delete(Path.Combine(missing, m.Files.Keys.First(k => k.EndsWith(".deps.json"))));
-        Check("integridade: arquivo listado ausente é detectado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(missing))) is { } e3 && e3.Contains("ausente"));
+        Check("integridade: arquivo listado ausente é detectado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(missing))) is { } e3 && e3.Contains("Missing file"));
 
         var extraDll = Path.Combine(work, "t-dll-solta");
         CopyDir(Path.Combine(rootOk, "fixture"), extraDll);
         File.WriteAllBytes(Path.Combine(extraDll, "solta.dll"), [1, 2, 3]);
-        Check("integridade: DLL fora do manifesto é recusada", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(extraDll))) is { } e4 && e4.Contains("não listado"));
+        Check("integridade: DLL fora do manifesto é recusada", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(extraDll))) is { } e4 && e4.Contains("not listed"));
 
         var extraSub = Path.Combine(work, "t-dll-subpasta");
         CopyDir(Path.Combine(rootOk, "fixture"), extraSub);
         Directory.CreateDirectory(Path.Combine(extraSub, "nativos"));
         File.WriteAllBytes(Path.Combine(extraSub, "nativos", "x.EXE"), [1]);
-        Check("integridade: binário solto em subpasta (qualquer caixa) é recusado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(extraSub))) is { } e5 && e5.Contains("não listado"));
+        Check("integridade: binário solto em subpasta (qualquer caixa) é recusado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(extraSub))) is { } e5 && e5.Contains("not listed"));
 
         var extraTxt = Path.Combine(work, "t-txt");
         CopyDir(Path.Combine(rootOk, "fixture"), extraTxt);
@@ -131,7 +131,7 @@ public static class BackendTests
         var wrongHash = Path.Combine(work, "t-hash-errado");
         CopyDir(Path.Combine(rootOk, "fixture"), wrongHash);
         RewriteManifest(wrongHash, t => t.Replace(m.Files[m.Assembly], new string('0', 64)));
-        Check("integridade: hash do manifesto errado é detectado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(wrongHash))) is { } e6 && e6.Contains("Integridade"));
+        Check("integridade: hash do manifesto errado é detectado", Throws(() => BackendCatalog.VerifyIntegrity(EntryAt(wrongHash))) is { } e6 && e6.Contains("Integrity"));
 
         // ---------- carregamento ----------
         var loaded = BackendCatalog.Load(okEntry);
@@ -159,12 +159,12 @@ public static class BackendTests
         Check("carga: KillAsync padrão avisa que não encerra o alvo", kill[0].Level == LogLevel.Warning);
 
         Check("carga: tipo inexistente em 'factory' é recusado",
-            Throws(() => BackendCatalog.Load(Mutated("t-tipo", t => t.Replace("Lazuli.TestFixture.FixtureFactory", "Nao.Existe")))) is { } e7 && e7.Contains("não existe"));
+            Throws(() => BackendCatalog.Load(Mutated("t-tipo", t => t.Replace("Lazuli.TestFixture.FixtureFactory", "Nao.Existe")))) is { } e7 && e7.Contains("doesn't exist"));
         Check("carga: id do manifesto diferente do que o backend declara é recusado",
-            Throws(() => BackendCatalog.Load(Mutated("t-id", t => t.Replace("\"id\": \"fixture\"", "\"id\": \"outro\"")))) is { } e8 && e8.Contains("não bate"));
+            Throws(() => BackendCatalog.Load(Mutated("t-id", t => t.Replace("\"id\": \"fixture\"", "\"id\": \"outro\"")))) is { } e8 && e8.Contains("doesn't match"));
         Check("carga: requiresAdmin diferente do que o backend declara é recusado",
             Throws(() => BackendCatalog.Load(Mutated("t-admin", t => t.Replace("\"requiresAdmin\": false", "\"requiresAdmin\": true")))) is { } e9 && e9.Contains("requiresAdmin"));
-        Check("carga: backend adulterado não chega a carregar", Throws(() => BackendCatalog.Load(EntryAt(tamper))) is { } e10 && e10.Contains("Integridade"));
+        Check("carga: backend adulterado não chega a carregar", Throws(() => BackendCatalog.Load(EntryAt(tamper))) is { } e10 && e10.Contains("Integrity"));
 
         BackendEntry Mutated(string name, Func<string, string> edit)
         {
@@ -192,7 +192,7 @@ public static class BackendTests
         Check("Resolve: cria a pasta de dados do backend", Directory.Exists(Path.Combine(dataRoot, "fixture")));
         Check("Resolve: atualiza BackendHost.Current e o nome mostrado em Sobre", BackendHost.Current.Id == "fixture" && Updates.AppInfo.BackendName.Contains("Fixture de teste"));
         var r2 = BackendHost.Resolve("demo", rootOk, host, dataRoot);
-        Check("Resolve('demo'): MockRunSession, mesmo com plugin instalado", r2.Session is MockRunSession && r2.Info.Id == "demo" && Updates.AppInfo.BackendName.Contains("demonstração"));
+        Check("Resolve('demo'): MockRunSession, mesmo com plugin instalado", r2.Session is MockRunSession && r2.Info.Id == "demo" && Updates.AppInfo.BackendName.Contains("demo"));
         var r3 = BackendHost.Resolve("sumiu", rootOk, host, dataRoot);
         Check("Resolve: id desconhecido cai na demonstração com aviso", r3.Session is MockRunSession && r3.Warnings.Any(w => w.Contains("sumiu")));
         var r4 = BackendHost.Resolve("fixture", Path.Combine(work, "ruins-2"), host, dataRoot);
@@ -200,7 +200,7 @@ public static class BackendTests
         var rootTamper = Path.Combine(work, "adulterado", "backends");
         CopyDir(tamper, Path.Combine(rootTamper, "fixture"));
         var r5 = BackendHost.Resolve("fixture", rootTamper, host, dataRoot);
-        Check("Resolve: backend adulterado cai na demonstração e explica por quê", r5.Session is MockRunSession && r5.Warnings.Any(w => w.Contains("Integridade") && w.Contains("demonstração")));
+        Check("Resolve: backend adulterado cai na demonstração e explica por quê", r5.Session is MockRunSession && r5.Warnings.Any(w => w.Contains("Integrity") && w.Contains("demo")));
         var r6 = BackendHost.Resolve(null, rootBad, host, dataRoot);
         Check("Resolve: avisos de pastas ignoradas chegam ao usuário", r6.Warnings.Count >= 4 && r6.Info.Id == "fixture");
         BackendHost.Resolve("demo", rootOk, host, dataRoot); // deixa o estado global como no início

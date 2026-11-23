@@ -76,7 +76,7 @@ public partial class UpdateWindow : Window
         _stage = s;
         var busy = s is Stage.Downloading or Stage.Installing;
         ProgressBox.IsVisible = busy;
-        NotesCard.IsVisible = !busy;
+        NotesCard.IsVisible = !busy && Program.EarlySettings.ShowChangelogs;
         ErrorText.IsVisible = s == Stage.Error;
         ErrorText.Text = error ?? "";
         FootText.IsVisible = s != Stage.Error; // com botões largos no erro, o texto do rodapé só atrapalha

@@ -95,7 +95,7 @@
   <!-- Fontes embutidas no exe (licença OFL junto em Assets/Fonts) -->
   <ItemGroup>
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
-    <AvaloniaResource Include="Assets\lazuli.ico;Assets\lazuli.png" />
+    <AvaloniaResource Include="Assets\lazuli.ico;Assets\lazuli.png;Assets\default-background.jpg" />
     <!-- build de lançamento (-p:EmbedSolara=true): o plugin vai DENTRO do exe e é extraído na instalação (veja Services\Installer.cs) -->
     <EmbeddedResource Include="Embedded\solara\*" Condition="'$(EmbedSolara)' == 'true'" LogicalName="plugin/solara/%(Filename)%(Extension)" />
   </ItemGroup>

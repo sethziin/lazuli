@@ -15,8 +15,8 @@ public partial class AutoExecItem : ObservableObject
 /// <summary>Páginas extras do layout detalhado. O Script Hub está em MainViewModel.Hub.cs; Auto-execute ainda é só visual.</summary>
 public partial class MainViewModel
 {
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditorActive))] private bool _hubOpen;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditorActive))] private bool _autoExecOpen;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditorActive)), NotifyPropertyChangedFor(nameof(EditorShown))] private bool _hubOpen;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditorActive)), NotifyPropertyChangedFor(nameof(EditorShown))] private bool _autoExecOpen;
 
     public ObservableCollection<AutoExecItem> AutoExecScripts { get; } =
     [
@@ -24,6 +24,9 @@ public partial class MainViewModel
         new("fps-unlocker.lua", false),
         new("chat-logger.lua", false),
     ];
+
+    /// <summary>Configurações dentro da janela: cobre a área de trabalho sem trocar de página (ao fechar, volta ao que estava).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditorShown))] private bool _settingsOpen;
 
     private void ClosePages() { HubOpen = false; AutoExecOpen = false; }
 

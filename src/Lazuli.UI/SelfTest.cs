@@ -263,7 +263,7 @@ public static class SelfTest
         vm.OpenTabMenu(tr, 100, 46);
         Check("menu: abre e libera edição", vm.TabMenuOpen && vm.MenuCanEdit);
         vm.MenuDuplicateCommand.Execute(null);
-        Check("duplicar: cria cópia logo depois", !vm.TabMenuOpen && vm.Tabs[idx + 1].Title == "meu script (cópia)" && vm.SelectedTab == vm.Tabs[idx + 1]);
+        Check("duplicar: cria cópia logo depois", !vm.TabMenuOpen && vm.Tabs[idx + 1].Title == "meu script (copy)" && vm.SelectedTab == vm.Tabs[idx + 1]);
         vm.OpenTabMenu(tr, 100, 46);
         vm.MenuDuplicateCommand.Execute(null);
         Check("duplicar de novo: nome único", vm.Tabs.Select(t => t.Title).Distinct().Count() == vm.Tabs.Count);
@@ -291,12 +291,12 @@ public static class SelfTest
         vm.OpenPalette();
         var total = vm.PaletteItems.Count;
         Check("paleta: lista todos os comandos", vm.PaletteOpen && total >= 15 && vm.SelectedPaletteItem is not null);
-        vm.PaletteQuery = "aba";
-        Check("paleta: filtra por texto", vm.PaletteItems.Count > 0 && vm.PaletteItems.Count < total && vm.PaletteItems.All(p => p.Title.Contains("aba", StringComparison.OrdinalIgnoreCase)));
+        vm.PaletteQuery = "tab";
+        Check("paleta: filtra por texto", vm.PaletteItems.Count > 0 && vm.PaletteItems.Count < total && vm.PaletteItems.All(p => p.Title.Contains("tab", StringComparison.OrdinalIgnoreCase)));
         vm.PaletteQuery = "zzzz";
         Check("paleta: sem resultado não quebra", vm.PaletteItems.Count == 0 && vm.SelectedPaletteItem is null);
         vm.MovePalette(+1); vm.RunPaletteItem();
-        vm.PaletteQuery = "novo script";
+        vm.PaletteQuery = "new script";
         var n0 = vm.Tabs.Count;
         vm.RunPaletteItem();
         Check("paleta: Enter executa o comando e fecha", !vm.PaletteOpen && vm.Tabs.Count == n0 + 1);

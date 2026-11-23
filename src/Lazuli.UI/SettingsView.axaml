@@ -1,0 +1,422 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Lazuli.UI.ViewModels"
+             xmlns:local="using:Lazuli.UI"
+             x:Class="Lazuli.UI.SettingsView"
+             x:DataType="vm:MainViewModel"
+             Background="{StaticResource Editor}">
+
+  <UserControl.Resources>
+    <!-- Interruptor (liga/desliga) no lugar da caixa de seleção -->
+    <ControlTheme x:Key="ToggleTheme" TargetType="CheckBox">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Track" Width="38" Height="22" CornerRadius="11"
+                  Background="{StaticResource Editor}" BorderBrush="{StaticResource LineStrong}" BorderThickness="1">
+            <Ellipse x:Name="Knob" Width="14" Height="14" Fill="{StaticResource Faint}"
+                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Track">
+        <Setter Property="BorderBrush" Value="{StaticResource AccentLine}" />
+      </Style>
+      <Style Selector="^:checked /template/ Border#Track">
+        <Setter Property="Background" Value="{StaticResource Active}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentLine}" />
+      </Style>
+      <Style Selector="^:checked /template/ Ellipse#Knob">
+        <Setter Property="Fill" Value="{StaticResource Accent}" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Margin" Value="0,0,3,0" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <Style Selector="CheckBox.toggle">
+      <Setter Property="Theme" Value="{StaticResource ToggleTheme}" />
+    </Style>
+
+    <!-- Abas no topo -->
+    <Style Selector="ListBox.toptabs ListBoxItem">
+      <Setter Property="Padding" Value="11,0" />
+      <Setter Property="Height" Value="40" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ListBox.toptabs ListBoxItem /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Clear}" />
+      <Setter Property="Foreground" Value="{StaticResource Muted}" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="{StaticResource Clear}" />
+    </Style>
+    <Style Selector="ListBox.toptabs ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Clear}" />
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+    </Style>
+    <Style Selector="ListBox.toptabs ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Clear}" />
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+    </Style>
+
+    <!-- Cartão de grupo e linha de opção -->
+    <Style Selector="Border.group">
+      <Setter Property="Background" Value="{StaticResource Lift}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="Margin" Value="0,0,0,16" />
+    </Style>
+    <Style Selector="Border.srow">
+      <Setter Property="Padding" Value="16,11" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Border.srow:pointerover">
+      <Setter Property="Background" Value="#08FFFFFF" />
+    </Style>
+    <Style Selector="TextBlock.rtitle">
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBlock.rdesc">
+      <Setter Property="Foreground" Value="{StaticResource Faint}" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+
+    <!-- Layout simples: uma lista curta e plana, só o essencial (sem abas, cartões, cabeçalhos nem descrições) -->
+    <Style Selector=":is(UserControl).simple Border.group">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector=":is(UserControl).simple Border.ghead">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=":is(UserControl).simple TextBlock.rdesc">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=":is(UserControl).simple Border.srow">
+      <Setter Property="Padding" Value="2,10" />
+    </Style>
+    <Style Selector=":is(UserControl).simple Border.srow:pointerover">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- Abas + busca -->
+    <Grid x:Name="TopBar" Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,0" Background="{StaticResource Chrome}">
+      <ListBox x:Name="Nav" Classes="toptabs" SelectedIndex="0" Margin="10,0,0,0">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBoxItem>Appearance</ListBoxItem>
+        <ListBoxItem>Interface</ListBoxItem>
+        <ListBoxItem>Editor</ListBoxItem>
+        <ListBoxItem>Lazuli</ListBoxItem>
+        <ListBoxItem>About</ListBoxItem>
+      </ListBox>
+      <Panel Grid.Column="1" Width="180" Margin="8,0,16,0" VerticalAlignment="Center">
+        <TextBox x:Name="SearchBox" Classes="search" PlaceholderText="Search settings" MaxLength="60" />
+        <Path Data="{StaticResource IconSearch}" Stroke="{StaticResource Faint}" StrokeThickness="1.9"
+              StrokeLineCap="Round" Stretch="Uniform" Width="12" Height="12"
+              HorizontalAlignment="Left" VerticalAlignment="Center" Margin="11,0,0,0" IsHitTestVisible="False" />
+      </Panel>
+      <Border Grid.ColumnSpan="2" Classes="hline" VerticalAlignment="Bottom" IsHitTestVisible="False" />
+    </Grid>
+
+    <!-- Conteúdo -->
+    <Border Grid.Row="1" Background="Transparent">
+      <DockPanel>
+
+        <Border DockPanel.Dock="Bottom">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Classes="hline" />
+            <Grid x:Name="FooterGrid" ColumnDefinitions="Auto,*,Auto" Height="58" Margin="24,0">
+              <Button x:Name="ResetBtn" Classes="secondary" Content="Restore defaults" VerticalAlignment="Center"
+                      Command="{Binding ResetSettingsCommand}" />
+              <Button Grid.Column="2" x:Name="DoneBtn" Classes="secondary default" Content="Back to editor" VerticalAlignment="Center" />
+            </Grid>
+          </DockPanel>
+        </Border>
+
+        <ScrollViewer x:Name="Scroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel x:Name="Body" Margin="24,18,24,8" MaxWidth="780" HorizontalAlignment="Stretch">
+
+            <TextBlock x:Name="NoResults" Classes="muted" Text="No settings match your search." IsVisible="False" Margin="2,6,0,0" />
+
+            <!-- ===== Appearance ===== -->
+            <StackPanel x:Name="PgAppearance">
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="THEME" /></Border>
+                <Border Classes="srow core" Tag="theme colors swatch custom background accent dark"><StackPanel>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock x:Name="ThemeLabel" Classes="rtitle" Text="Theme" VerticalAlignment="Center" IsVisible="False" />
+                    <WrapPanel x:Name="ThemeSwatches" Grid.ColumnSpan="2" VerticalAlignment="Center" />
+                  </Grid>
+                  <StackPanel x:Name="CustomPanel" Margin="0,14,0,0" Spacing="10" IsVisible="False">
+                    <Grid ColumnDefinitions="120,Auto,10,Auto">
+                      <TextBlock Classes="label" Text="Background" />
+                      <TextBox x:Name="CustomBgBox" Grid.Column="1" Width="110" MaxLength="7" PlaceholderText="#RRGGBB" />
+                      <Border x:Name="CustomBgChip" Grid.Column="3" Width="26" Height="26" CornerRadius="6" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" Cursor="Hand" />
+                    </Grid>
+                    <Grid ColumnDefinitions="120,Auto,10,Auto">
+                      <TextBlock Classes="label" Text="Accent" />
+                      <TextBox x:Name="CustomAccentBox" Grid.Column="1" Width="110" MaxLength="7" PlaceholderText="#RRGGBB" />
+                      <Border x:Name="CustomAccentChip" Grid.Column="3" Width="26" Height="26" CornerRadius="6" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" Cursor="Hand" />
+                    </Grid>
+                    <local:ColorPad x:Name="Pad" IsVisible="False" Margin="120,2,0,4" />
+                    <TextBlock Classes="rdesc" Text="Dark backgrounds work best. Colors that are too light are darkened so text stays readable." />
+                  </StackPanel>
+                </StackPanel></Border>
+              </StackPanel></Border>
+
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="BACKGROUND IMAGE" /></Border>
+                <Border Classes="srow core" Tag="background image wallpaper picture choose remove"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Image" />
+                    <TextBlock x:Name="ImageNote" Classes="rdesc" Text="PNG, JPG, BMP or WebP, up to 25 MB." />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button x:Name="ChooseImageBtn" Classes="secondary" Content="Choose image…" />
+                    <Button x:Name="RemoveImageBtn" Classes="secondary" Content="Remove" IsEnabled="{Binding Settings.HasBackgroundImage}" />
+                  </StackPanel>
+                </Grid></Border>
+                <Border Classes="srow" Tag="readability dim image opacity"><Grid ColumnDefinitions="*,240,52" IsEnabled="{Binding Settings.HasBackgroundImage}">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Readability" />
+                    <TextBlock Classes="rdesc" Text="Higher covers the image more, so text is easier to read." />
+                  </StackPanel>
+                  <Slider Grid.Column="1" Minimum="0.7" Maximum="0.97" Value="{Binding Settings.ImageDim}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center"
+                             Text="{Binding Settings.ImageDim, StringFormat='{}{0:P0}'}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="blur image background"><Grid ColumnDefinitions="*,240,52" IsEnabled="{Binding Settings.HasBackgroundImage}">
+                  <TextBlock Classes="rtitle" Text="Blur" VerticalAlignment="Center" />
+                  <Slider Grid.Column="1" Minimum="0" Maximum="16" Value="{Binding Settings.ImageBlur}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center"
+                             Text="{Binding Settings.ImageBlur, StringFormat='{}{0:0}'}" />
+                </Grid></Border>
+              </StackPanel></Border>
+            </StackPanel>
+
+            <!-- ===== Interface ===== -->
+            <StackPanel x:Name="PgInterface">
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="WINDOW" /></Border>
+                <Border Classes="srow core" Tag="layout simple detailed home script hub sidebar restart"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Layout" />
+                    <TextBlock Classes="rdesc" Text="Simple: editor and actions only. Detailed: adds Home, Script Hub and the sidebar. Changing it restarts the app." />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <RadioButton x:Name="SimpleRadio" GroupName="layout" Content="Simple" />
+                    <RadioButton x:Name="DetailedRadio" GroupName="layout" Content="Detailed" />
+                  </StackPanel>
+                </Grid></Border>
+                <Border Classes="srow core" Tag="always on top window pin"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Always on top" VerticalAlignment="Center" />
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.AlwaysOnTop}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="open with output visible console startup"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Open with Output visible" />
+                    <TextBlock Classes="rdesc" Text="Show the Output panel as soon as the app opens." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.ShowOutputOnStart}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="splash screen startup logo"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Show splash screen" VerticalAlignment="Center" />
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.ShowSplash}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="performance light lite auto rendering software gpu memory animations shadows"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Performance" />
+                    <TextBlock Classes="rdesc" Text="Light uses software rendering (faster startup, much less memory) and turns off animations and shadows. Auto picks based on your PC. Applies after restarting." />
+                  </StackPanel>
+                  <ComboBox Grid.Column="1" Width="220" VerticalAlignment="Center" ItemsSource="{Binding PerformanceOptions}"
+                            SelectedValueBinding="{ReflectionBinding Key}" SelectedValue="{Binding Settings.PerformanceMode}" />
+                </Grid></Border>
+              </StackPanel></Border>
+
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="SESSION" /></Border>
+                <Border Classes="srow" Tag="restore tabs open startup session"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Restore tabs on open" />
+                    <TextBlock Classes="rdesc" Text="Reopen the tabs you had when you closed Lazuli." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.RestoreTabs}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="clear saved session data tabs delete"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Saved data" />
+                    <TextBlock Classes="rdesc" Text="Forget the tabs saved from the last session." />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="secondary" Content="Clear saved session" VerticalAlignment="Center"
+                          Command="{Binding ClearSavedSessionCommand}" />
+                </Grid></Border>
+              </StackPanel></Border>
+            </StackPanel>
+
+            <!-- ===== Editor ===== -->
+            <StackPanel x:Name="PgEditor">
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="TEXT" /></Border>
+                <Border Classes="srow" Tag="font size text editor"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Font size" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="1" Width="110" ItemsSource="{Binding FontSizes}" SelectedItem="{Binding Settings.EditorFontSize}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="syntax theme highlight colors code"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Syntax theme" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="1" Width="190" ItemsSource="{Binding ThemeOptions}"
+                            SelectedValueBinding="{ReflectionBinding Key}" SelectedValue="{Binding Settings.SyntaxTheme}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="tab size indentation spaces"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Tab size" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="1" Width="110" ItemsSource="{Binding TabSizes}" SelectedItem="{Binding Settings.TabSize}" />
+                </Grid></Border>
+              </StackPanel></Border>
+
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="DISPLAY" /></Border>
+                <Border Classes="srow" Tag="line numbers gutter display"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Line numbers" VerticalAlignment="Center" />
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.ShowLineNumbers}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="highlight current line display"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Highlight current line" VerticalAlignment="Center" />
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.HighlightCurrentLine}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="word wrap long lines display"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Word wrap" VerticalAlignment="Center" />
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.WordWrap}" />
+                </Grid></Border>
+              </StackPanel></Border>
+
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="LUA" /></Border>
+                <Border Classes="srow" Tag="lua auto close brackets parentheses quotes pairs"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Auto-close brackets and quotes" />
+                    <TextBlock Classes="rdesc" Text="Closes ( [ { and quotes as you type." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.AutoPairs}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="lua auto indent close blocks end smart"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Auto-indent and close blocks" />
+                    <TextBlock Classes="rdesc" Text="Indents inside blocks and adds the matching end." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.SmartBlocks}" />
+                </Grid></Border>
+              </StackPanel></Border>
+            </StackPanel>
+
+            <!-- ===== Lazuli ===== -->
+            <StackPanel x:Name="PgLazuli">
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="CLIENTS" /></Border>
+                <Border Classes="srow core" Tag="auto attach roblox launch automatically connect"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Auto attach" />
+                    <TextBlock Classes="rdesc" Text="Attach to Roblox clients as they launch." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.AutoAttach}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="auto select clients newly attached target"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Auto select clients" />
+                    <TextBlock Classes="rdesc" Text="Select newly attached clients automatically (needs a backend that runs per client)." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.AutoSelectClients}" />
+                </Grid></Border>
+                <Border Classes="srow core" Tag="multi client multiple roblox instances windows singleton mutex"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Multi client" />
+                    <TextBlock Classes="rdesc" Text="Allow more than one Roblox instance at once. Applies to windows opened afterwards; if Roblox is already open, close it first." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.MultiClient}" />
+                </Grid></Border>
+              </StackPanel></Border>
+
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="UPDATES" /></Border>
+                <Border Classes="srow core" Tag="auto update automatic check version startup"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Auto update" />
+                    <TextBlock Classes="rdesc" Text="Look for a new version every time Lazuli opens and offer it. Applies on the next launch." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.AutoUpdate}" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="check for updates now new version"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Check for updates" />
+                    <TextBlock x:Name="CheckNowText" Classes="rdesc" Text="Look for a newer version right now." />
+                  </StackPanel>
+                  <Button Grid.Column="1" x:Name="CheckNowBtn" Classes="secondary" Content="Check now" VerticalAlignment="Center" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="show changelogs release notes what changed"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Show changelogs" />
+                    <TextBlock Classes="rdesc" Text="Show what changed when an update is offered." />
+                  </StackPanel>
+                  <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.ShowChangelogs}" />
+                </Grid></Border>
+              </StackPanel></Border>
+            </StackPanel>
+
+            <!-- ===== About ===== -->
+            <StackPanel x:Name="PgAbout">
+              <Border Classes="group"><StackPanel>
+                <Border Classes="ghead" Padding="16,12,16,10"><TextBlock Classes="section" Text="LAZULI" /></Border>
+                <Border Classes="srow" Tag="version build"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Version" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="muted" Text="{Binding Version}" VerticalAlignment="Center" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="backend current plugin"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Backend" VerticalAlignment="Center" />
+                  <TextBlock x:Name="BackendText" Grid.Column="1" Classes="muted" VerticalAlignment="Center" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="backend next launch choose plugin demo auto solara xeno"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Backend (next launch)" />
+                    <TextBlock Classes="rdesc" Text="Lists what is in the backends\ folder next to the app. Applies after reopening. Only install trusted backends: manifest hashes check integrity, not authorship." />
+                  </StackPanel>
+                  <ComboBox x:Name="BackendCombo" Grid.Column="1" Width="220" VerticalAlignment="Center" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="fonts geist jetbrains license"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Fonts" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="muted" Text="Geist, JetBrains Mono (OFL)" VerticalAlignment="Center" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="data folder appdata settings location"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Data" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="muted" Text="%APPDATA%\Lazuli" FontFamily="{StaticResource Mono}" FontSize="12" VerticalAlignment="Center" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="rendering gpu software lite"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Rendering" VerticalAlignment="Center" />
+                  <TextBlock x:Name="RenderText" Grid.Column="1" Classes="muted" VerticalAlignment="Center" />
+                </Grid></Border>
+                <Border Classes="srow" Tag="memory in use ram"><Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="rtitle" Text="Memory in use" VerticalAlignment="Center" />
+                  <TextBlock x:Name="MemoryText" Grid.Column="1" Classes="muted" VerticalAlignment="Center" />
+                </Grid></Border>
+              </StackPanel></Border>
+            </StackPanel>
+
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

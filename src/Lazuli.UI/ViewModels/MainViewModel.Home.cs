@@ -48,13 +48,15 @@ public partial class RecentGame : ObservableObject
 public partial class MainViewModel
 {
     /// <summary>Home é a tela inicial; alterna com o Editor pelos botões da barra lateral.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditorActive))] private bool _homeOpen = true;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditorActive)), NotifyPropertyChangedFor(nameof(EditorShown))] private bool _homeOpen = true;
 
     /// <summary>Layout escolhido ao abrir o app (trocar nas configurações só vale ao reiniciar).</summary>
     public bool IsSimple { get; private set; }
 
     /// <summary>true quando a tela à mostra é o editor (nenhuma Home por cima).</summary>
     public bool EditorActive => !HomeOpen && !HubOpen && !AutoExecOpen;
+    /// <summary>Editor visível na tela: ativo e sem as Configurações por cima (elas deixam o fundo do app aparecer).</summary>
+    public bool EditorShown => EditorActive && !SettingsOpen;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasLastGame), nameof(NoGames))] private RecentGame? _lastGame;
     [ObservableProperty] private bool _homeLoading;
 

@@ -16,7 +16,7 @@ public sealed class MockScriptLibrary : IScriptLibrary
 
 public sealed class MockRunSession : IRunSession
 {
-    public string StatusText => "Demo · sem backend";
+    public string StatusText => "Demo · no backend";
     public bool IsAttached { get; private set; }
 #pragma warning disable CS0067
     public event Action<LogLine>? LogReceived;
@@ -26,7 +26,7 @@ public sealed class MockRunSession : IRunSession
     {
         await Task.Delay(700, ct); // simulação visual
         IsAttached = true;
-        return [new(DateTime.Now, LogLevel.Success, "Attached (demo, sem backend).")];
+        return [new(DateTime.Now, LogLevel.Success, "Attached (demo, no backend).")];
     }
 
     public void Detach() => IsAttached = false;
@@ -36,7 +36,7 @@ public sealed class MockRunSession : IRunSession
         await Task.Delay(250, ct);
         return
         [
-            new(DateTime.Now, LogLevel.Info, $"[mock] {source.Length} caracteres recebidos"),
+            new(DateTime.Now, LogLevel.Info, $"[mock] {source.Length} characters received"),
             new(DateTime.Now, LogLevel.Warning, "No backend connected. Demo mode."),
         ];
     }
@@ -49,7 +49,7 @@ public sealed class MockRunSession : IRunSession
     {
         lock (_lock)
             return _fake.Select((pid, i) => new ClientInfo(pid, "Roblox",
-                (IsAttached ? "Anexado" : "Sem attach") + (i == 0 ? " · 412 MB · 12 min" : " · 388 MB · 3 min"),
+                (IsAttached ? "Attached" : "Not attached") + (i == 0 ? " · 412 MB · 12 min" : " · 388 MB · 3 min"),
                 IsAttached, "Demo client.")).ToList();
     }
 

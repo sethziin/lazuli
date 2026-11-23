@@ -94,7 +94,10 @@ public partial class MainViewModel
                     c.PropertyChanged += OnClientChanged;
                     Clients.Add(c);
                 }
+                var wasAttached = c.IsAttached;
                 c.Update(info);
+                if (Settings.AutoSelectClients && info.Attached && !wasAttached && Backend.Has(BackendCapabilities.PerClientRun))
+                    c.IsSelected = true;
             }
             NotifyClientsChanged();
         }

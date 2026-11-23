@@ -33,7 +33,7 @@ public static class BackendHost
             return discovery.Backends.Count == 1 ? discovery.Backends[0] : null;
         if (requestedId == BackendInfo.DemoId) return null;
         var hit = discovery.Backends.FirstOrDefault(e => e.Manifest.Id == requestedId);
-        if (hit is null) warnings.Add($"O backend \"{requestedId}\" not found in backends\\. Using demo.");
+        if (hit is null) warnings.Add($"Backend \"{requestedId}\" not found in backends\\. Using demo.");
         return hit;
     }
 
@@ -59,7 +59,7 @@ public static class BackendHost
             }
             catch (Exception ex)
             {
-                warnings.Add($"Couldn't load backend\"{pick.Manifest.Id}\": {ex.Message} Using demo.");
+                warnings.Add($"Couldn't load backend \"{pick.Manifest.Id}\": {ex.Message} Using demo.");
                 result = new BackendSelection(BackendInfo.Demo, new MockRunSession(), warnings, discovery);
             }
         }

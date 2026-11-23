@@ -147,7 +147,6 @@ public partial class MainWindow : Window
             _vm.PropertyChanged += OnVmChanged;
             _vm.Settings.PropertyChanged += OnSettingsChanged;
             _vm.EditorReloadRequested += () => LoadTab(_vm.SelectedTab);
-            _vm.SettingsRequested += OpenSettings;
             _vm.OpenFileRequested += () => _ = OpenFilesAsync();
             _vm.FindRequested += OpenSearch;
             _vm.ToggleCommentRequested += () => { Editor.Focus(); _lua?.ToggleComment(); };
@@ -163,16 +162,6 @@ public partial class MainWindow : Window
         };
     }
 
-    private SettingsWindow? _settingsWindow;
-
-    private void OpenSettings()
-    {
-        if (_settingsWindow is not null) { _settingsWindow.Activate(); return; }
-        _settingsWindow = new SettingsWindow { DataContext = _vm, Topmost = Topmost };
-        Perf.Apply(_settingsWindow, _vm!.Settings);
-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-        _settingsWindow.ShowDialog(this);
-    }
 
     private void FocusEditor() => Dispatcher.UIThread.Post(() => Editor.Focus(), DispatcherPriority.Background);
 
@@ -408,7 +397,6 @@ public partial class MainWindow : Window
             case nameof(AppSettings.SyntaxTheme): ApplyTheme(); break;
             case nameof(AppSettings.PerformanceMode):
                 Perf.Apply(this, _vm!.Settings);
-                if (_settingsWindow is not null) Perf.Apply(_settingsWindow, _vm.Settings);
                 break;
             case nameof(AppSettings.HighlightCurrentLine):
             case nameof(AppSettings.TabSize): ApplyOptions(); break;

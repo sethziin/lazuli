@@ -194,7 +194,7 @@
               </StackPanel>
             </Grid>
             <Panel DockPanel.Dock="Top" Margin="10,0,10,8">
-              <TextBox Classes="search" Text="{Binding SearchText}" Watermark="Search" />
+              <TextBox Classes="search" Text="{Binding SearchText}" PlaceholderText="Search" />
               <Path Data="{StaticResource IconSearch}" Stroke="{StaticResource Faint}" StrokeThickness="1.9"
                     StrokeLineCap="Round" Stretch="Uniform" Width="12" Height="12"
                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="11,0,0,0" IsHitTestVisible="False" />
@@ -287,7 +287,7 @@
           <Grid Grid.Column="2" RowDefinitions="*,Auto,Auto" Background="{StaticResource Editor}">
 
             <ae:TextEditor x:Name="Editor" Grid.Row="0"
-                           Background="Transparent" Foreground="#D8DBE2" IsVisible="{Binding EditorActive}"
+                           Background="Transparent" Foreground="#D8DBE2" IsVisible="{Binding EditorShown}"
                            FontFamily="{StaticResource Mono}"
                            FontSize="{Binding Settings.EditorFontSize}"
                            WordWrap="{Binding Settings.WordWrap}"
@@ -297,7 +297,7 @@
                            Padding="4,12,0,0" />
 
             <!-- Barra de ações: Executar + ferramentas do arquivo -->
-            <Border Grid.Row="1" Background="{StaticResource Lift}" IsVisible="{Binding EditorActive}">
+            <Border Grid.Row="1" Background="{StaticResource Lift}" IsVisible="{Binding EditorShown}">
               <DockPanel>
                 <Border DockPanel.Dock="Top" Classes="hline" />
                 <Grid ColumnDefinitions="*,Auto" Height="46" Margin="14,0">
@@ -598,6 +598,9 @@
               </StackPanel>
             </Panel>
 
+            <!-- Configurações: cobrem a área de trabalho (Home, Editor ou Hub); ao fechar, volta ao que estava -->
+            <local:SettingsView x:Name="SettingsPanel" Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding SettingsOpen}" />
+
             <!-- Output (fechado por padrão) -->
             <DockPanel x:Name="ConsolePanel" Grid.Row="2" Height="170" IsVisible="{Binding ConsoleOpen}" Background="{StaticResource Lift}">
               <Border DockPanel.Dock="Top" Classes="hline" />
@@ -726,7 +729,7 @@
     <Border Classes="card" Width="540" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,70,0,0">
       <DockPanel>
         <TextBox x:Name="PaletteBox" DockPanel.Dock="Top" Classes="palette" Text="{Binding PaletteQuery}"
-                 Watermark="Type a command…" />
+                 PlaceholderText="Type a command…" />
         <Border DockPanel.Dock="Top" Classes="hline" />
         <ListBox x:Name="PaletteList" Classes="palette" MaxHeight="330" Margin="6"
                  ItemsSource="{Binding PaletteItems}" SelectedItem="{Binding SelectedPaletteItem}">

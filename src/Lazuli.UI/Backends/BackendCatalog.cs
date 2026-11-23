@@ -80,7 +80,7 @@ public static class BackendCatalog
         foreach (var (rel, expected) in entry.Manifest.Files)
         {
             var full = Path.GetFullPath(Path.Combine(dir, rel));
-            if (!full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) throw new BackendLoadException($"Caminho fora da pasta do backend: {rel}");
+            if (!full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) throw new BackendLoadException($"Path outside the backend folder: {rel}");
             if (!File.Exists(full)) throw new BackendLoadException($"Missing file: {rel}");
             if (File.GetAttributes(full).HasFlag(FileAttributes.ReparsePoint)) throw new BackendLoadException($"Symbolic links aren't accepted: {rel}");
             string actual;
@@ -119,7 +119,7 @@ public static class BackendCatalog
             if (Activator.CreateInstance(type) is not IBackendFactory factory)
                 throw new BackendLoadException($"Couldn't create \"{entry.Manifest.Factory}\" (it needs a public parameterless constructor).");
             if (factory.ContractVersion != ContractInfo.Version)
-                throw new BackendLoadException($"O backend foi feito para o contrato v{factory.ContractVersion}; o app espera v{ContractInfo.Version}.");
+                throw new BackendLoadException($"The backend was built for contract v{factory.ContractVersion}; the app expects v{ContractInfo.Version}.");
             var info = factory.Info;
             if (info.Id != entry.Manifest.Id)
                 throw new BackendLoadException($"The backend id (\"{info.Id}\") doesn't match the manifest (\"{entry.Manifest.Id}\").");
@@ -131,7 +131,7 @@ public static class BackendCatalog
         catch (Exception ex) when (ex is BadImageFormatException or FileLoadException or FileNotFoundException or TypeLoadException
                                        or ReflectionTypeLoadException or TargetInvocationException or MissingMethodException)
         {
-            throw new BackendLoadException($"Falha ao carregar {entry.Manifest.Assembly}: {ex.Message}", ex);
+            throw new BackendLoadException($"Couldn't load {entry.Manifest.Assembly}: {ex.Message}", ex);
         }
     }
 

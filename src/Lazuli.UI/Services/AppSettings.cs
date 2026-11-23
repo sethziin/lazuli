@@ -22,13 +22,23 @@ public partial class AppSettings : ObservableObject
     /// <summary>Layout simples: só abas, editor e ações (sem barra lateral, Início e barra de status).</summary>
     [ObservableProperty] private bool _simpleLayout = true;
 
+    // ---- Clientes ----
+    [ObservableProperty] private bool _autoAttach;
+    [ObservableProperty] private bool _autoSelectClients = true;
+    /// <summary>Segura o mutex de instância única do Roblox para permitir várias janelas (veja Services\MultiClient.cs).</summary>
+    [ObservableProperty] private bool _multiClient;
+
+    // ---- Atualizações ----
+    [ObservableProperty] private bool _autoUpdate = true;
+    [ObservableProperty] private bool _showChangelogs = true;
+
     // ---- Aparência (veja Services\ThemeManager.cs) ----
     /// <summary>Nome de um tema pronto, ou "Custom" para usar CustomBackground/CustomAccent.</summary>
-    [ObservableProperty] private string _themeName = "Graphite";
+    [ObservableProperty] private string _themeName = "Lazuli";
     [ObservableProperty] private string _customBackground = "#131315";
     [ObservableProperty] private string _customAccent = "#6C8CFF";
     /// <summary>Nome do arquivo da imagem de fundo (copiada para %LOCALAPPDATA%\Lazuli); null = sem imagem.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasBackgroundImage))] private string? _backgroundImage;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasBackgroundImage))] private string? _backgroundImage = Services.ThemeManager.BuiltinBackground;
     /// <summary>Opacidade das superfícies por cima da imagem (0,70–0,97): quanto maior, mais legível e mais discreta a imagem.</summary>
     [ObservableProperty] private double _imageDim = 0.85;
     [ObservableProperty] private double _imageBlur;
@@ -57,6 +67,8 @@ public partial class AppSettings : ObservableObject
         EditorFontSize = o.EditorFontSize; SyntaxTheme = o.SyntaxTheme; WordWrap = o.WordWrap;
         ShowLineNumbers = o.ShowLineNumbers; HighlightCurrentLine = o.HighlightCurrentLine; TabSize = o.TabSize;
         AlwaysOnTop = o.AlwaysOnTop; ShowOutputOnStart = o.ShowOutputOnStart; RestoreTabs = o.RestoreTabs; ShowSplash = o.ShowSplash; PerformanceMode = o.PerformanceMode; AutoPairs = o.AutoPairs; SmartBlocks = o.SmartBlocks; SimpleLayout = o.SimpleLayout;
+        AutoAttach = o.AutoAttach; AutoSelectClients = o.AutoSelectClients; MultiClient = o.MultiClient;
+        AutoUpdate = o.AutoUpdate; ShowChangelogs = o.ShowChangelogs;
         ThemeName = o.ThemeName; CustomBackground = o.CustomBackground; CustomAccent = o.CustomAccent;
         BackgroundImage = o.BackgroundImage; ImageDim = o.ImageDim; ImageBlur = o.ImageBlur;
     }
