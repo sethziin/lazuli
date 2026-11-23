@@ -1,0 +1,35 @@
+LAZULI
+======
+
+COMO USAR
+1. Abra o Lazuli.exe (pode estar em Downloads, Área de Trabalho, onde for).
+   Na primeira vez ele se instala sozinho em  %LOCALAPPDATA%\Programs\Lazuli  e cria um atalho no Menu Iniciar.
+   Depois disso você pode apagar o arquivo baixado e abrir o Lazuli pelo Menu Iniciar.
+2. Na primeira vez que clicar em Attach, ele baixa os arquivos do Solara (precisa de internet).
+3. Abra o Roblox e entre num jogo. Clique em Attach, escreva o script e clique em Execute.
+
+ONDE FICAM AS COISAS
+- O app:                   %LOCALAPPDATA%\Programs\Lazuli
+- Configurações e scripts: %APPDATA%\Lazuli
+- Cache, downloads e logs: %LOCALAPPDATA%\Lazuli   (logs\error.log, se algo der errado)
+Para desinstalar: apague essas pastas e o atalho "Lazuli" do Menu Iniciar.
+
+REQUISITOS
+- Windows 10 ou 11, 64 bits. Nada para instalar antes: o .NET já vem dentro do Lazuli.
+- Se faltar o Microsoft Visual C++ Runtime (raro), o Lazuli oferece baixar o oficial da Microsoft, confere a assinatura e instala.
+- Na primeira vez ele também baixa sozinho os arquivos do Solara (precisa de internet).
+
+SE O WINDOWS AVISAR
+- "O Windows protegeu seu PC" (SmartScreen): clique em "Mais informações" e depois em "Executar assim mesmo".
+  (O app tem assinatura digital própria, mas ela não é de uma autoridade conhecida; por isso o Windows avisa na primeira vez.)
+- Controle Inteligente de Aplicativos (Smart App Control) ligado: ele bloqueia programas sem assinatura de uma autoridade
+  conhecida e não deixa liberar um por um. É uma configuração do Windows; o Lazuli não mexe nela.
+- Antivírus: o backend baixado (SolaraV3.dll) é uma ferramenta de injeção e muitos antivírus bloqueiam ou apagam por padrão.
+  Se ele sumir ou der erro ao anexar, adicione a pasta do Lazuli às exclusões do antivírus.
+
+ATUALIZAÇÕES
+O app procura atualização sozinho ao abrir e pergunta se quer instalar. Tudo é conferido por assinatura digital.
+Os arquivos do Solara também são atualizados sozinhos, conferidos por SHA-256.
+
+AVISO
+Usar executores viola os termos de uso do Roblox e pode causar o banimento da conta.

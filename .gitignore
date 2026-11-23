@@ -1,0 +1,33 @@
+﻿bin/
+obj/
+.nuget/
+publish/
+.vs/
+build-quorum/
+publish-quorum/
+pack-quorum/
+
+scripts/keys/
+dist/
+publish-lite/
+publish-xeno/
+.update/
+.test/
+tools/cloudflare/node_modules/
+tools/cloudflare/.npm-cache/
+src/Executor.UI/Embedded/
+release/
+.test/
+
+# fora do repositório público: dependem de arquivos de terceiros em pastas locais
+backends/Executor.Backend.Xeno/
+src/Executor.Quorum/
+scripts/pack-quorum.ps1
+
+# saídas e estado local
+release/
+publish-*/
+.wrangler/
+tools/cloudflare/.wrangler/
+.test/
+src/Executor.UI/app.quorum.manifest

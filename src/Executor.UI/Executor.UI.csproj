@@ -1,0 +1,135 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ApplicationIcon>Assets\lazuli.ico</ApplicationIcon>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Lazuli</AssemblyName>
+    <!-- versão do app: o script de publicação passa -p:Version=x.y.z; é ela que o atualizador compara -->
+    <Version>0.1.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <RootNamespace>Executor.UI</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Menos custo de runtime: sem PGO dinâmico, GC sem thread de fundo, sem EventSource (telemetria interna) -->
+    <TieredPGO>false</TieredPGO>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <EventSourceSupport>false</EventSourceSupport>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- dotnet publish -c Release: .exe único com o .NET 10 DENTRO (self-contained): roda em qualquer Windows 10/11 x64 sem instalar o .NET.
+       Compressão ligada: ~64 MB em vez de ~150 MB. ReadyToRun = código pré-compilado: abre mais rápido. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- pacotes nativos (Skia/HarfBuzz) trazem .pdb de ~100 MB que não servem na publicação -->
+  <Target Name="RemoveNativePdbs" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_PdbToDelete Include="$(PublishDir)*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_PdbToDelete)" />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Executor.Contracts\Executor.Contracts.csproj" />
+  </ItemGroup>
+
+  <!--
+    dotnet build/publish -p:Backend=xeno = canal "xeno": o app sai com o plugin Xeno junto, em backends\xeno\ (precisa de administrador).
+    A UI NÃO referencia o backend: ele é um plugin que o app descobre em tempo de execução (Backends\BackendCatalog).
+    O símbolo BACKEND_XENO só escolhe o canal de atualização (AppInfo.Channel). Sem -p:Backend, o app sai sem backend (canal lite: demonstração).
+  -->
+  <PropertyGroup Condition="'$(Backend)' == 'xeno'">
+    <DefineConstants>$(DefineConstants);BACKEND_XENO</DefineConstants>
+    <ApplicationManifest>app.quorum.manifest</ApplicationManifest>
+    <XenoBackendProject>$(MSBuildThisFileDirectory)..\..\backends\Executor.Backend.Xeno\Executor.Backend.Xeno.csproj</XenoBackendProject>
+    <!-- saída do plugin (biblioteca de classes: sem RuntimeIdentifier, então o caminho é fixo) -->
+    <_XenoOutDir>$(MSBuildThisFileDirectory)..\..\backends\Executor.Backend.Xeno\bin\$(Configuration)\net10.0\</_XenoOutDir>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Backend)' == 'xeno'">
+    <!-- só para compilar o plugin antes: ReferenceOutputAssembly=false, a UI não enxerga nenhum tipo dele -->
+    <ProjectReference Include="$(XenoBackendProject)" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+
+  <!-- copia a saída do plugin (DLL, backend.json com os hashes e nativos) para backends\xeno\ ao lado do exe -->
+  <Target Name="BundleXenoBackend" AfterTargets="Build" Condition="'$(Backend)' == 'xeno'">
+    <ItemGroup>
+      <_XenoFile Include="$(_XenoOutDir)**\*" Exclude="$(_XenoOutDir)**\*.pdb;$(_XenoOutDir)Executor.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_XenoFile)" DestinationFiles="@(_XenoFile->'$(OutDir)backends\xeno\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <!-- só Debug: o backend de teste que o autoteste (EXECUTOR_SELFTEST) carrega de verdade; vai para test-fixtures\ (nunca para backends\) -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <ProjectReference Include="..\..\backends\Executor.Backend.TestFixture\Executor.Backend.TestFixture.csproj" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+  <Target Name="BundleTestFixture" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <ItemGroup>
+      <_FixtureFile Include="$(MSBuildThisFileDirectory)..\..\backends\Executor.Backend.TestFixture\bin\Debug\net10.0\**\*" Exclude="$(MSBuildThisFileDirectory)..\..\backends\Executor.Backend.TestFixture\bin\Debug\net10.0\**\*.pdb;$(MSBuildThisFileDirectory)..\..\backends\Executor.Backend.TestFixture\bin\Debug\net10.0\Executor.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_FixtureFile)" DestinationFiles="@(_FixtureFile->'$(OutDir)test-fixtures\fixture\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="BundleXenoBackendPublish" AfterTargets="Publish" Condition="'$(Backend)' == 'xeno'">
+    <ItemGroup>
+      <_XenoPubFile Include="$(_XenoOutDir)**\*" Exclude="$(_XenoOutDir)**\*.pdb;$(_XenoOutDir)Executor.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_XenoPubFile)" DestinationFiles="@(_XenoPubFile->'$(PublishDir)backends\xeno\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!--
+    dotnet build/publish -p:Backend=solara = canal "solara": o app sai com o plugin Solara em backends\solara\
+    (SolaraV3.dll original + asset inicial). Não precisa de administrador. Mesmo esquema do Xeno: a UI não referencia o plugin.
+  -->
+  <PropertyGroup Condition="'$(Backend)' == 'solara'">
+    <DefineConstants>$(DefineConstants);BACKEND_SOLARA</DefineConstants>
+    <!-- o código protegido da SolaraV3.dll é incompatível com o CET (shadow stack) que o apphost do .NET liga por padrão:
+         com ele o processo morre com 0xC0000409 logo depois do Attach. O SolaraV3.exe oficial também não usa CET. -->
+    <CetCompat>false</CetCompat>
+    <SolaraBackendProject>$(MSBuildThisFileDirectory)..\..\backends\Executor.Backend.Solara\Executor.Backend.Solara.csproj</SolaraBackendProject>
+    <_SolaraOutDir>$(MSBuildThisFileDirectory)..\..\backends\Executor.Backend.Solara\bin\$(Configuration)\net10.0\</_SolaraOutDir>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Backend)' == 'solara'">
+    <ProjectReference Include="$(SolaraBackendProject)" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+  <Target Name="BundleSolaraBackend" AfterTargets="Build" Condition="'$(Backend)' == 'solara'">
+    <ItemGroup>
+      <_SolaraFile Include="$(_SolaraOutDir)**\*" Exclude="$(_SolaraOutDir)**\*.pdb;$(_SolaraOutDir)Executor.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SolaraFile)" DestinationFiles="@(_SolaraFile->'$(OutDir)backends\solara\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="BundleSolaraBackendPublish" AfterTargets="Publish" Condition="'$(Backend)' == 'solara'">
+    <ItemGroup>
+      <_SolaraPubFile Include="$(_SolaraOutDir)**\*" Exclude="$(_SolaraOutDir)**\*.pdb;$(_SolaraOutDir)Executor.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SolaraPubFile)" DestinationFiles="@(_SolaraPubFile->'$(PublishDir)backends\solara\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Fontes embutidas no exe (licença OFL junto em Assets/Fonts) -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+    <AvaloniaResource Include="Assets\lazuli.ico;Assets\lazuli.png" />
+    <!-- build de lançamento (-p:EmbedSolara=true): o plugin vai DENTRO do exe e é extraído na instalação (veja Services\Installer.cs) -->
+    <EmbeddedResource Include="Embedded\solara\*" Condition="'$(EmbedSolara)' == 'true'" LogicalName="plugin/solara/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Simple" Version="12.1.6" />
+    <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+</Project>

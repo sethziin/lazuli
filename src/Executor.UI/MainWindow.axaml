@@ -1,0 +1,752 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ae="https://github.com/avaloniaui/avaloniaedit"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
+        xmlns:vm="using:Executor.UI.ViewModels"
+        xmlns:c="using:Executor.Contracts"
+        xmlns:local="using:Executor.UI"
+        x:Class="Executor.UI.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Lazuli" Icon="avares://Lazuli/Assets/lazuli.ico"
+        Width="900" Height="560" MinWidth="640" MinHeight="400"
+        WindowStartupLocation="CenterScreen"
+        Topmost="{Binding Settings.AlwaysOnTop}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="44"
+        WindowDecorations="BorderOnly">
+
+  <Panel>
+  <!-- imagem de fundo (Configurações > Appearance): fica atrás de tudo; as superfícies a cobrem com a opacidade escolhida -->
+  <Image x:Name="BgImage" IsVisible="False" Stretch="UniformToFill" IsHitTestVisible="False" />
+  <Grid x:Name="RootGrid" RowDefinitions="44,*,Auto">
+
+    <!-- Barra do topo única: marca · abas · Attach · controles da janela -->
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Background="{StaticResource Chrome}">
+      <!-- fundo arrastável: tudo que não é botão move a janela -->
+      <Border Grid.ColumnSpan="4" Background="Transparent" chrome:WindowDecorationProperties.ElementRole="TitleBar" />
+      <Border Grid.ColumnSpan="4" Classes="hline" VerticalAlignment="Bottom" IsHitTestVisible="False" />
+
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,0,20,0" VerticalAlignment="Center" IsHitTestVisible="False">
+        <Panel>
+          <Image Source="avares://Lazuli/Assets/lazuli.png" Width="22" Height="22" RenderOptions.BitmapInterpolationMode="HighQuality" />
+          <!-- layout simples: o status vira só uma bolinha no canto do ícone -->
+          <Ellipse Classes="dot" Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-4,0"
+                   Fill="{Binding StatusDot}" Stroke="{StaticResource Chrome}" StrokeThickness="2" IsVisible="{Binding IsSimple}" />
+        </Panel>
+      </StackPanel>
+
+      <!-- Abas + "+" colado na última aba. Com muitas abas, a lista rola e o "+" fica fixo à direita dela. -->
+      <Border x:Name="TabsHost" Grid.Column="1" ClipToBounds="True">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+          <ListBox x:Name="TabsList" Classes="tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
+                   VerticalAlignment="Stretch"
+                   ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                   ScrollViewer.VerticalScrollBarVisibility="Disabled">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ScriptTab">
+                <Border Height="44" Background="Transparent">
+                  <StackPanel Classes="tabcontent" Classes.main="{Binding IsMain}"
+                              Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Classes="tabtitle" Text="{Binding Title}" VerticalAlignment="Center"
+                               IsVisible="{Binding !IsRenaming}"
+                               MaxWidth="150" TextTrimming="CharacterEllipsis" />
+                    <TextBox Classes="rename" Text="{Binding EditTitle}" IsVisible="{Binding IsRenaming}" />
+                    <Ellipse Width="6" Height="6" Fill="{StaticResource Muted}" VerticalAlignment="Center"
+                             IsVisible="{Binding ShowDirty}" />
+                    <Button Classes="ghost tabclose" Width="18" Height="18" CornerRadius="4"
+                            IsVisible="{Binding CanClose}"
+                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseTabCommand}"
+                            CommandParameter="{Binding}">
+                      <local:Ico Data="{StaticResource IconClose}" Width="10" Height="10" Thickness="1.6" />
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Button x:Name="NewTabBtn" Classes="ghost" Width="28" Height="28" Margin="6,0,8,0" VerticalAlignment="Center"
+                  Command="{Binding NewTabCommand}">
+            <local:Ico Data="{StaticResource IconPlus}" Width="15" Height="15" />
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- Encerrar Roblox + Attach -->
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="8,0,12,0" VerticalAlignment="Center">
+        <Button Classes="ghost" Width="30" Height="30" Command="{Binding OpenSettingsCommand}" AutomationProperties.Name="Settings" IsVisible="{Binding IsSimple}">
+          <local:Ico Data="{StaticResource IconSettings}" Width="17" Height="17" />
+        </Button>
+        <Button Classes="attach kill" Classes.armed="{Binding KillArmed}" Command="{Binding KillAllCommand}" IsVisible="{Binding CanKill}">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <local:Ico Data="{StaticResource IconPower}" Width="16" Height="16" />
+            <TextBlock Text="{Binding KillLabel}" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{Binding $parent[Button].Foreground}" />
+          </StackPanel>
+        </Button>
+        <Button Classes="attach" IsVisible="{Binding !IsSimple}"
+                Classes.on="{Binding IsAttached}"
+                Command="{Binding AttachCommand}" IsEnabled="{Binding CanAttach}">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Viewbox Width="14" Height="14" VerticalAlignment="Center">
+              <Canvas Width="24" Height="24">
+                <Path Classes="glyph" Data="{StaticResource IconLink}" IsVisible="{Binding !IsAttached}" />
+                <Path Classes="glyph" Data="{StaticResource IconCheck}" IsVisible="{Binding IsAttached}" />
+              </Canvas>
+            </Viewbox>
+            <TextBlock Text="{Binding AttachLabel}" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{Binding $parent[Button].Foreground}" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+
+      <StackPanel Grid.Column="3" Orientation="Horizontal">
+        <Button Classes="caption" Height="44" x:Name="MinBtn">
+          <Rectangle Width="10" Height="1" Fill="{Binding $parent[Button].Foreground}" />
+        </Button>
+        <Button Classes="caption" Height="44" x:Name="MaxBtn">
+          <local:Ico Data="{StaticResource IconMax}" Width="11" Height="11" Thickness="1.3" />
+        </Button>
+        <Button Classes="caption close" Height="44" x:Name="CloseBtn">
+          <local:Ico Data="{StaticResource IconClose}" Width="11" Height="11" Thickness="1.3" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <!-- Corpo -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
+
+      <Border Grid.Column="0" Background="{StaticResource Chrome}" IsVisible="{Binding !IsSimple}" />
+      <!-- Barra de atividades -->
+      <DockPanel Grid.Column="0" Margin="0,6" Width="52" IsVisible="{Binding !IsSimple}">
+        <Button DockPanel.Dock="Bottom" Classes="rail" Command="{Binding OpenSettingsCommand}" AutomationProperties.Name="Settings">
+          <local:Ico Data="{StaticResource IconSettings}" Width="16" Height="16" />
+        </Button>
+        <StackPanel Spacing="2">
+          <Button Classes="rail" Classes.on="{Binding HomeOpen}" Command="{Binding ShowHomeCommand}" AutomationProperties.Name="Home">
+            <Panel>
+              <Border Classes="railmark" />
+              <local:Ico Data="{StaticResource IconHome}" Width="16" Height="16" />
+            </Panel>
+          </Button>
+          <Button Classes="rail" Classes.on="{Binding EditorActive}" Command="{Binding ShowEditorCommand}" AutomationProperties.Name="Editor">
+            <Panel>
+              <Border Classes="railmark" />
+              <local:Ico Data="{StaticResource IconCode}" Width="16" Height="16" />
+            </Panel>
+          </Button>
+          <Button Classes="rail" Classes.on="{Binding HubOpen}" Command="{Binding ShowHubCommand}" AutomationProperties.Name="Script Hub">
+            <Panel>
+              <Border Classes="railmark" />
+              <local:Ico Data="{StaticResource IconGrid}" Width="16" Height="16" />
+            </Panel>
+          </Button>
+          <Button Classes="rail" Classes.on="{Binding AutoExecOpen}" Command="{Binding ShowAutoExecCommand}" AutomationProperties.Name="Auto-execute">
+            <Panel>
+              <Border Classes="railmark" />
+              <local:Ico Data="{StaticResource IconBolt}" Width="16" Height="16" />
+            </Panel>
+          </Button>
+          <Border Classes="hline" Margin="14,6" />
+          <Button Classes="rail" Classes.on="{Binding LibraryOpen}" Command="{Binding ToggleLibraryCommand}" AutomationProperties.Name="Scripts">
+            <Panel>
+              <Border Classes="railmark" />
+              <local:Ico Data="{StaticResource IconFiles}" Width="16" Height="16" />
+            </Panel>
+          </Button>
+          <Button Classes="rail" Classes.on="{Binding ConsoleOpen}" Command="{Binding ToggleConsoleCommand}" AutomationProperties.Name="Output">
+            <Panel>
+              <Border Classes="railmark" />
+              <local:Ico Data="{StaticResource IconTerminal}" Width="16" Height="16" />
+            </Panel>
+          </Button>
+          <Button Classes="rail" Classes.on="{Binding ClientsOpen}" Command="{Binding ToggleClientsCommand}" AutomationProperties.Name="Roblox clients" IsVisible="{Binding CanListClients}">
+            <Panel>
+              <Border Classes="railmark" />
+              <local:Ico Data="{StaticResource IconMonitor}" Width="16" Height="16" />
+            </Panel>
+          </Button>
+        </StackPanel>
+      </DockPanel>
+      <Border Grid.Column="1" Classes="vline" IsVisible="{Binding !IsSimple}" />
+
+      <!-- Área de trabalho: plana, separada só por linhas finas -->
+      <Border Grid.Column="2">
+        <Grid ColumnDefinitions="Auto,Auto,*">
+
+          <!-- Scripts (fechado por padrão) -->
+          <DockPanel x:Name="LibraryPanel" Grid.Column="0" Width="232" Background="{StaticResource Panel}" IsVisible="{Binding LibraryOpen}">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Height="40" Margin="16,0,8,0">
+              <TextBlock Classes="section" Text="SCRIPTS" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <Button Classes="ghost" Width="26" Height="26" Command="{Binding ReloadLibraryCommand}">
+                  <local:Ico Data="{StaticResource IconRefresh}" Width="15" Height="15" />
+                </Button>
+                <Button Classes="ghost" Width="26" Height="26" Command="{Binding OpenLibraryFolderCommand}"
+                        IsVisible="{Binding HasLibraryFolder}">
+                  <local:Ico Data="{StaticResource IconOpen}" Width="15" Height="15" />
+                </Button>
+                <Button Classes="ghost" Width="26" Height="26" Command="{Binding NewTabCommand}">
+                  <local:Ico Data="{StaticResource IconPlus}" Width="15" Height="15" />
+                </Button>
+              </StackPanel>
+            </Grid>
+            <Panel DockPanel.Dock="Top" Margin="10,0,10,8">
+              <TextBox Classes="search" Text="{Binding SearchText}" Watermark="Search" />
+              <Path Data="{StaticResource IconSearch}" Stroke="{StaticResource Faint}" StrokeThickness="1.9"
+                    StrokeLineCap="Round" Stretch="Uniform" Width="12" Height="12"
+                    HorizontalAlignment="Left" VerticalAlignment="Center" Margin="11,0,0,0" IsHitTestVisible="False" />
+            </Panel>
+            <ListBox Classes="entries" x:Name="LibraryList" ItemsSource="{Binding FilteredLibrary}" Margin="6,0,6,8">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="c:ScriptEntry">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Path Data="{StaticResource IconFile}" Stroke="{StaticResource Faint}" StrokeThickness="1.7"
+                          StrokeLineCap="Round" StrokeJoin="Round" Stretch="Uniform" Width="13" Height="13" Margin="0,0,10,0" />
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Classes="faint" Text="{Binding Tag}" FontSize="11" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+          <!-- Clientes: Roblox abertos, onde executar e encerrar (divide o espaço com Scripts) -->
+          <DockPanel x:Name="ClientsPanel" Grid.Column="0" Width="268" Background="{StaticResource Panel}" IsVisible="{Binding ClientsOpen}">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Height="40" Margin="16,0,8,0">
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Classes="section" Text="ROBLOX" VerticalAlignment="Center" />
+                <TextBlock Classes="faint" FontSize="11" Text="{Binding ClientsCountText}" VerticalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <Button Classes="ghost" Width="26" Height="26" Command="{Binding SelectAllClientsCommand}"
+                        IsEnabled="{Binding HasClients}">
+                  <local:Ico Data="{StaticResource IconCheck}" Width="15" Height="15" />
+                </Button>
+                <Button Classes="ghost" Width="26" Height="26" Command="{Binding RefreshClientsNowCommand}">
+                  <local:Ico Data="{StaticResource IconRefresh}" Width="15" Height="15" />
+                </Button>
+              </StackPanel>
+            </Grid>
+
+            <!-- Rodapé: onde o Executar vai agir + encerrar todos -->
+            <Border DockPanel.Dock="Bottom">
+              <DockPanel>
+                <Border DockPanel.Dock="Top" Classes="hline" />
+                <StackPanel Margin="14,12,14,14" Spacing="10">
+                  <TextBlock Classes="muted" FontSize="12" Text="{Binding TargetSummary}" TextWrapping="Wrap" />
+                  <Button Classes="secondary danger" Classes.armed="{Binding KillArmed}" HorizontalAlignment="Stretch"
+                          Command="{Binding KillAllCommand}" IsEnabled="{Binding HasClients}" IsVisible="{Binding CanKill}">
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                      <local:Ico Data="{StaticResource IconPower}" Width="15" Height="15" />
+                      <TextBlock Text="{Binding KillLabel}" Foreground="{Binding $parent[Button].Foreground}" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+
+            <ScrollViewer Margin="8,0,8,8" VerticalScrollBarVisibility="Auto">
+              <Panel>
+                <StackPanel IsVisible="{Binding NoClients}" Margin="8,18,8,0" Spacing="6">
+                  <TextBlock Text="No Roblox open" HorizontalAlignment="Center" />
+                  <TextBlock Classes="faint" Text="Open the game and it shows up here." FontSize="12" HorizontalAlignment="Center" />
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Clients}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RobloxClient">
+                      <Border Classes="client" Margin="0,0,0,6">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
+                          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" Margin="2,0,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                              <Ellipse Classes="dot" Width="7" Height="7" Fill="{Binding StatusBrush}" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding Title}" FontWeight="Medium" VerticalAlignment="Center" />
+                              <TextBlock Classes="faint" FontFamily="{StaticResource Mono}" FontSize="11"
+                                         Text="{Binding PidText}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Detail}" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <Button Grid.Column="2" Classes="ghost rowkill" Width="26" Height="26" VerticalAlignment="Center"
+                                  Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).KillClientCommand}"
+                                  CommandParameter="{Binding}">
+                            <local:Ico Data="{StaticResource IconPower}" Width="15" Height="15" />
+                          </Button>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Panel>
+            </ScrollViewer>
+          </DockPanel>
+          <Border Grid.Column="1" Classes="vline" IsVisible="{Binding SideOpen}" />
+
+          <!-- Editor -->
+          <Grid Grid.Column="2" RowDefinitions="*,Auto,Auto" Background="{StaticResource Editor}">
+
+            <ae:TextEditor x:Name="Editor" Grid.Row="0"
+                           Background="Transparent" Foreground="#D8DBE2" IsVisible="{Binding EditorActive}"
+                           FontFamily="{StaticResource Mono}"
+                           FontSize="{Binding Settings.EditorFontSize}"
+                           WordWrap="{Binding Settings.WordWrap}"
+                           ShowLineNumbers="{Binding Settings.ShowLineNumbers}"
+                           LineNumbersForeground="#454957"
+                           HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                           Padding="4,12,0,0" />
+
+            <!-- Barra de ações: Executar + ferramentas do arquivo -->
+            <Border Grid.Row="1" Background="{StaticResource Lift}" IsVisible="{Binding EditorActive}">
+              <DockPanel>
+                <Border DockPanel.Dock="Top" Classes="hline" />
+                <Grid ColumnDefinitions="*,Auto" Height="46" Margin="14,0">
+                  <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="primary" Padding="16,0"
+                            Command="{Binding RunCommand}" IsEnabled="{Binding CanRun}">
+                      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Viewbox Width="18" Height="18" VerticalAlignment="Center" Margin="-3,0,-2,0">
+                          <Canvas Width="24" Height="24">
+                            <Path Data="{StaticResource IconPlay}" Fill="{Binding $parent[Button].Foreground}" />
+                          </Canvas>
+                        </Viewbox>
+                        <TextBlock Text="Execute" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                    <Border Classes="vline" Height="18" Margin="8,0" VerticalAlignment="Center" />
+                    <Button Classes="ghost" Height="30" Padding="10,0" Command="{Binding OpenFileCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                        <local:Ico Data="{StaticResource IconOpen}" Width="16" Height="16" />
+                        <TextBlock Text="Open" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Classes="ghost" Height="30" Padding="10,0" Command="{Binding SaveCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                        <local:Ico Data="{StaticResource IconSave}" Width="16" Height="16" />
+                        <TextBlock Text="Save" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Classes="ghost" Height="30" Padding="10,0" Command="{Binding ClearEditorCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                        <local:Ico Data="{StaticResource IconTrash}" Width="16" Height="16" />
+                        <TextBlock Text="Clear" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                  <!-- Paleta de comandos -->
+                  <!-- layout simples: o Attach fica aqui embaixo, à direita -->
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding IsSimple}">
+                    <Button Classes="attach" Classes.on="{Binding IsAttached}" Command="{Binding AttachCommand}" IsEnabled="{Binding CanAttach}">
+                      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <local:Ico Data="{StaticResource IconLink}" Width="15" Height="15" IsVisible="{Binding !IsAttached}" />
+                        <local:Ico Data="{StaticResource IconCheck}" Width="15" Height="15" IsVisible="{Binding IsAttached}" />
+                        <TextBlock Text="{Binding AttachLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                  <Button x:Name="PaletteBtn" Grid.Column="1" Classes="ghost" Height="30" Padding="10,0" IsVisible="{Binding !IsSimple}">
+                    <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+                      <TextBlock Text="Commands" Foreground="{Binding $parent[Button].Foreground}" />
+                      <Border BorderBrush="{StaticResource LineStrong}" BorderThickness="1" CornerRadius="3" Padding="5,1">
+                        <TextBlock Classes="faint" FontSize="11" Text="Ctrl K" />
+                      </Border>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </DockPanel>
+            </Border>
+
+            <!-- Script Hub (ScriptBlox) -->
+            <Panel Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding HubOpen}">
+              <DockPanel Margin="28,20,28,0">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+                  <StackPanel Spacing="3" VerticalAlignment="Center">
+                    <TextBlock Text="Script Hub" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Classes="faint" FontSize="11.5" Text="Powered by ScriptBlox.com" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Panel>
+                      <TextBox Classes="search" Width="250" MaxLength="100" Text="{Binding HubQuery}" PlaceholderText="Search scripts" />
+                      <local:Ico Data="{StaticResource IconSearch}" Width="14" Height="14" Brush="{StaticResource Faint}"
+                                 HorizontalAlignment="Left" Margin="11,0,0,0" IsHitTestVisible="False" />
+                    </Panel>
+                    <Button Classes="ghost" Width="30" Height="30" Command="{Binding RefreshHubCommand}">
+                      <local:Ico Data="{StaticResource IconRefresh}" Width="15" Height="15" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+
+                <!-- categorias -->
+                <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding HubCategories}" Margin="0,0,0,14">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:HubCategory">
+                      <Button Classes="chip" Classes.on="{Binding IsSelected}" Height="28" Padding="14,0" FontSize="12.5" Content="{Binding Name}"
+                              Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectHubCategoryCommand}" CommandParameter="{Binding}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Panel>
+                  <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,0,0,18">
+                      <ItemsControl ItemsSource="{Binding HubItems}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:HubItem">
+                            <Border Classes="client" Width="236" Margin="0,0,12,12" Padding="0" ClipToBounds="True">
+                              <StackPanel>
+                                <Border Height="112" Background="{StaticResource Active}" ClipToBounds="True">
+                                  <Panel>
+                                    <TextBlock Text="{Binding Initial}" FontSize="34" FontWeight="SemiBold" Foreground="{StaticResource Faint}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasImage}" />
+                                    <Image Source="{Binding Image}" Stretch="UniformToFill" />
+                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,8">
+                                      <Border Classes="badge" IsVisible="{Binding Verified}"><TextBlock Classes="badgetext ok" Text="Verified" /></Border>
+                                      <Border Classes="badge" IsVisible="{Binding NeedsKey}"><TextBlock Classes="badgetext warn" Text="Key" /></Border>
+                                      <Border Classes="badge" IsVisible="{Binding IsUniversal}"><TextBlock Classes="badgetext" Text="Universal" /></Border>
+                                    </StackPanel>
+                                  </Panel>
+                                </Border>
+                                <StackPanel Margin="12,10,12,12" Spacing="9">
+                                  <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" LineHeight="18" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="muted" FontSize="11.5" LineHeight="16" Text="{Binding Game}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="faint" FontSize="11.5" LineHeight="16" Text="{Binding ViewsText, StringFormat='{}{0} views'}" />
+                                  </StackPanel>
+                                  <Grid ColumnDefinitions="*,6,*">
+                                    <Button Classes="primary" Height="28" Padding="0" HorizontalAlignment="Stretch" Content="Execute"
+                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ExecuteHubItemCommand}" CommandParameter="{Binding}" />
+                                    <Button Grid.Column="2" Classes="secondary" Height="28" MinWidth="0" Padding="0" HorizontalAlignment="Stretch" Content="Open"
+                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenHubItemCommand}" CommandParameter="{Binding}" />
+                                  </Grid>
+                                </StackPanel>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <Button Classes="secondary" HorizontalAlignment="Center" Margin="0,4,0,0" Content="Load more"
+                              IsVisible="{Binding HubShowMore}" Command="{Binding LoadMoreHubCommand}" />
+                      <TextBlock Classes="faint" HorizontalAlignment="Center" Margin="0,8,0,0" Text="Loading…" IsVisible="{Binding HubLoadingMore}" />
+                    </StackPanel>
+                  </ScrollViewer>
+
+                  <TextBlock Classes="muted" Text="Loading scripts…" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             IsVisible="{Binding HubShowSpinner}" />
+                  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding HubShowEmpty}">
+                    <TextBlock Text="No scripts found" HorizontalAlignment="Center" FontWeight="Medium" />
+                    <TextBlock Classes="faint" FontSize="12" Text="Try another search or category." HorizontalAlignment="Center" />
+                  </StackPanel>
+                  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" IsVisible="{Binding HubHasError}">
+                    <TextBlock Text="{Binding HubError}" HorizontalAlignment="Center" FontWeight="Medium" TextWrapping="Wrap" MaxWidth="360" TextAlignment="Center" />
+                    <Button Classes="secondary" HorizontalAlignment="Center" Content="Try again" Command="{Binding RefreshHubCommand}" />
+                  </StackPanel>
+                </Panel>
+              </DockPanel>
+            </Panel>
+
+            <!-- Auto-execute (placeholder) -->
+            <Panel Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding AutoExecOpen}">
+              <StackPanel Margin="28,20,28,16" Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="Auto-execute" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Classes="faint" FontSize="12" Text="Scripts that run automatically after Attach — preview" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="secondary" Content="Add script" VerticalAlignment="Center" Command="{Binding PlaceholderCommand}" />
+                </Grid>
+                <Border Background="{StaticResource Lift}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8">
+                  <ItemsControl ItemsSource="{Binding AutoExecScripts}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:AutoExecItem">
+                        <Grid ColumnDefinitions="Auto,*,Auto" Height="44" Margin="14,0">
+                          <local:Ico Data="{StaticResource IconFile}" Width="15" Height="15" Brush="{StaticResource Faint}" Margin="0,0,12,0" />
+                          <TextBlock Grid.Column="1" Text="{Binding Name}" FontFamily="{StaticResource Mono}" FontSize="12.5" VerticalAlignment="Center" />
+                          <ToggleSwitch Grid.Column="2" IsChecked="{Binding Enabled}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Border>
+                <TextBlock Classes="section" Text="OPTIONS" Margin="0,6,0,0" />
+                <StackPanel Spacing="10">
+                  <CheckBox Content="Run auto-execute scripts on every Attach" IsChecked="True" />
+                  <CheckBox Content="Auto-attach when Roblox opens" />
+                  <CheckBox Content="Unlock FPS" />
+                </StackPanel>
+              </StackPanel>
+            </Panel>
+
+            <!-- Home (tela inicial): cobre o editor e a barra dele; o Output continua embaixo -->
+            <Panel Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding HomeOpen}" ClipToBounds="True">
+              <StackPanel Margin="28,18,28,16" Spacing="14" MaxWidth="980" HorizontalAlignment="Stretch">
+
+                <!-- cabeçalho -->
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="Home" FontSize="20" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Ellipse Classes="dot" Width="7" Height="7" Fill="{Binding StatusDot}" VerticalAlignment="Center" />
+                      <TextBlock FontSize="12" FontWeight="Medium" Text="{Binding ConnectionText}" Foreground="{Binding ConnectionBrush}" />
+                      <TextBlock Classes="faint" FontSize="12" Text="·" />
+                      <TextBlock Classes="muted" FontSize="12" Text="{Binding BackendLabel}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="secondary" Command="{Binding OpenRobloxCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <local:Ico Data="{StaticResource IconMonitor}" Width="15" Height="15" />
+                        <TextBlock Text="Open Roblox" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Classes="secondary" Command="{Binding NewScriptFromHomeCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <local:Ico Data="{StaticResource IconPlus}" Width="15" Height="15" />
+                        <TextBlock Text="New script" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Classes="ghost" Width="30" Height="30" Command="{Binding RefreshHomeCommand}">
+                      <local:Ico Data="{StaticResource IconRefresh}" Width="15" Height="15" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+                <Grid>
+                <StackPanel Grid.Column="0" Spacing="14">
+
+                <!-- último jogo -->
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="section" Text="LAST GAME" />
+                  <Border IsVisible="{Binding NoGames}" Background="{StaticResource Lift}" BorderBrush="{StaticResource Line}"
+                          BorderThickness="1" CornerRadius="8" Padding="20">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="No recent games" FontWeight="Medium" />
+                      <TextBlock Classes="muted" FontSize="12" Text="Join a game on Roblox and it shows up here." TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                  <Panel IsVisible="{Binding HasLastGame}">
+                  <Border DataContext="{Binding LastGame}" x:DataType="vm:RecentGame"
+                          Background="{StaticResource Lift}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Padding="12">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Border Width="96" Height="96" CornerRadius="8" ClipToBounds="True" Background="{StaticResource Active}">
+                        <Panel>
+                          <TextBlock Text="{Binding Initial}" FontSize="40" FontWeight="SemiBold" Foreground="{StaticResource Faint}"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                          <Image Source="{Binding Icon}" Stretch="UniformToFill" />
+                        </Panel>
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="18,2,0,0" Spacing="4">
+                        <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted" FontSize="12.5" Text="{Binding Creator}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                          <TextBlock Classes="faint" FontSize="12" Text="{Binding PlayedText, StringFormat='Played {0}'}" />
+                          <TextBlock Classes="faint" FontSize="12" Text="·" IsVisible="{Binding HasPlaying}" />
+                          <TextBlock Classes="faint" FontSize="12" Text="{Binding PlayingText}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                          <Button Classes="primary" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).JoinGameCommand}" CommandParameter="{Binding}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <Path Data="{StaticResource IconPlay}" Width="11" Height="11" Stretch="Uniform" Fill="{Binding $parent[Button].Foreground}" />
+                              <TextBlock Text="Join game" Foreground="{Binding $parent[Button].Foreground}" />
+                            </StackPanel>
+                          </Button>
+                          <Button Classes="secondary" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).JoinServerCommand}" CommandParameter="{Binding}">
+                            <TextBlock Text="Same server" Foreground="{Binding $parent[Button].Foreground}" />
+                          </Button>
+                        </StackPanel>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  </Panel>
+                </StackPanel>
+
+                <!-- recentes -->
+                <StackPanel Spacing="8" IsVisible="{Binding HasRecentGames}">
+                  <TextBlock Classes="section" Text="RECENTLY PLAYED" />
+                  <ItemsControl ItemsSource="{Binding RecentGames}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:RecentGame">
+                        <Button Classes="ghost" Width="118" Padding="5" Margin="0,0,8,0" HorizontalContentAlignment="Stretch"
+                                Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).JoinGameCommand}" CommandParameter="{Binding}">
+                          <StackPanel Spacing="6">
+                            <Border Width="108" Height="108" CornerRadius="6" ClipToBounds="True" Background="{StaticResource Active}">
+                              <Panel>
+                                <TextBlock Text="{Binding Initial}" FontSize="32" FontWeight="SemiBold" Foreground="{StaticResource Faint}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                                <Image Source="{Binding Icon}" Stretch="UniformToFill" />
+                              </Panel>
+                            </Border>
+                            <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Classes="faint" FontSize="11.5" Text="{Binding PlayedText}" />
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+
+                </StackPanel></Grid>
+
+              </StackPanel>
+            </Panel>
+
+            <!-- Output (fechado por padrão) -->
+            <DockPanel x:Name="ConsolePanel" Grid.Row="2" Height="170" IsVisible="{Binding ConsoleOpen}" Background="{StaticResource Lift}">
+              <Border DockPanel.Dock="Top" Classes="hline" />
+              <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Height="36" Margin="16,0,8,0">
+                <TextBlock Classes="section" Text="OUTPUT" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <Button Classes="chip" Classes.on="{Binding ShowInfo}" Command="{Binding ToggleInfoCommand}">
+                    <TextBlock Text="Info" Foreground="{Binding $parent[Button].Foreground}" />
+                  </Button>
+                  <Button Classes="chip" Classes.on="{Binding ShowWarn}" Command="{Binding ToggleWarnCommand}">
+                    <TextBlock Text="{Binding WarnCount, StringFormat='Warnings {0}'}" Foreground="{Binding $parent[Button].Foreground}" />
+                  </Button>
+                  <Button Classes="chip" Classes.on="{Binding ShowError}" Command="{Binding ToggleErrorCommand}">
+                    <TextBlock Text="{Binding ErrorCount, StringFormat='Errors {0}'}" Foreground="{Binding $parent[Button].Foreground}" />
+                  </Button>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                  <Button Classes="ghost" Width="24" Height="24" Command="{Binding CopyConsoleCommand}">
+                    <local:Ico Data="{StaticResource IconCopy}" Width="14" Height="14" />
+                  </Button>
+                  <Button Classes="ghost" Width="24" Height="24" Command="{Binding ClearConsoleCommand}">
+                    <local:Ico Data="{StaticResource IconTrash}" Width="14" Height="14" />
+                  </Button>
+                  <Button Classes="ghost" Width="24" Height="24" Command="{Binding ToggleConsoleCommand}" AutomationProperties.Name="Output">
+                    <local:Ico Data="{StaticResource IconClose}" Width="11" Height="11" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+              <ScrollViewer x:Name="ConsoleScroll" Padding="16,0,16,10">
+                <ItemsControl Classes="log" ItemsSource="{Binding Console}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ConsoleItem">
+                      <StackPanel Classes="logline" Orientation="Horizontal" Spacing="14" Margin="0,2">
+                        <TextBlock Text="{Binding Time}" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource Faint}" />
+                        <TextBlock Text="{Binding Text}" FontFamily="{StaticResource Mono}" FontSize="12"
+                                   Foreground="{Binding Level, Converter={x:Static local:Converters.LevelBrush}}" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </DockPanel>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- Status -->
+    <Border Grid.Row="2" Background="{StaticResource Chrome}" IsVisible="{Binding !IsSimple}" />
+    <Border Grid.Row="2" Classes="hline" VerticalAlignment="Top" IsVisible="{Binding !IsSimple}" />
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="16,0,16,0" Height="28" IsVisible="{Binding !IsSimple}">
+      <!-- translateY(1px) = desce 1 px: a altura das maiúsculas (o que o olho vê) fica no centro da barra; o centro da caixa da fonte fica 1 px acima -->
+      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" RenderTransform="translateY(1px)">
+        <Ellipse Classes="dot" Width="7" Height="7" Fill="{Binding StatusDot}" VerticalAlignment="Center" />
+        <TextBlock FontSize="11.5" FontWeight="Medium" Text="{Binding ConnectionText}" Foreground="{Binding ConnectionBrush}" />
+        <TextBlock Classes="faint" FontSize="11.5" Text="·" />
+        <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Status}" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center" RenderTransform="translateY(1px)">
+        <TextBlock x:Name="CaretText" Classes="muted" FontSize="11.5" Text="Ln 1, Col 1" />
+        <TextBlock Classes="muted" FontSize="11.5" Text="UTF-8" />
+        <TextBlock Classes="muted" FontSize="11.5" Text="Lua" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+
+  <!-- ===== Camadas por cima de tudo ===== -->
+
+  <!-- Soltar arquivos para abrir -->
+  <Border IsVisible="{Binding DropHint}" IsHitTestVisible="False" Background="#E60E0E10" Margin="0,44,0,0">
+    <Border Margin="22" BorderBrush="{StaticResource AccentLine}" BorderThickness="1" CornerRadius="6">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+        <Path Data="{StaticResource IconOpen}" Stroke="{StaticResource Muted}" StrokeThickness="1.6" StrokeLineCap="Round"
+              StrokeJoin="Round" Stretch="Uniform" Width="34" Height="34" HorizontalAlignment="Center" />
+        <TextBlock Text="Drop to open" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Classes="faint" Text=".lua and text files, one per tab" HorizontalAlignment="Center" />
+      </StackPanel>
+    </Border>
+  </Border>
+
+  <!-- Menu de contexto da aba -->
+  <Grid x:Name="TabMenuLayer" IsVisible="{Binding TabMenuOpen}">
+    <Border x:Name="TabMenuScrim" Background="Transparent" />
+    <Border Classes="card" Width="210" Padding="4" HorizontalAlignment="Left" VerticalAlignment="Top"
+            Margin="{Binding TabMenuMargin}">
+      <StackPanel Spacing="1">
+        <Button Classes="menuitem" Command="{Binding MenuRenameCommand}" IsEnabled="{Binding MenuCanEdit}">
+          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Rename" /><TextBlock Grid.Column="1" Classes="faint" FontSize="11.5" Text="F2" /></Grid>
+        </Button>
+        <Button Classes="menuitem" Command="{Binding MenuDuplicateCommand}">
+          <TextBlock Text="Duplicate" />
+        </Button>
+        <Button Classes="menuitem" Command="{Binding MenuSaveCommand}">
+          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Save" /><TextBlock Grid.Column="1" Classes="faint" FontSize="11.5" Text="Ctrl+S" /></Grid>
+        </Button>
+        <Border Classes="hline" Margin="6,3" />
+        <Button Classes="menuitem" Command="{Binding MenuCloseCommand}" IsEnabled="{Binding MenuCanEdit}">
+          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Close" /><TextBlock Grid.Column="1" Classes="faint" FontSize="11.5" Text="Ctrl+W" /></Grid>
+        </Button>
+        <Button Classes="menuitem" Command="{Binding MenuCloseOthersCommand}">
+          <TextBlock Text="Close others" />
+        </Button>
+      </StackPanel>
+    </Border>
+  </Grid>
+
+  <!-- Confirmação -->
+  <Grid x:Name="ConfirmLayer" IsVisible="{Binding ConfirmOpen}">
+    <Border Background="#99000000" />
+    <Border Classes="card" Width="410" Padding="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding ConfirmTitle}" FontSize="15" FontWeight="SemiBold" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding ConfirmText}" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,18,0,0">
+          <Button Classes="secondary" Content="Cancel" Command="{Binding ConfirmCancelCommand}" />
+          <Button Classes="secondary" Content="Discard" Command="{Binding ConfirmDiscardCommand}" />
+          <Button Classes="secondary default" Content="Save" Command="{Binding ConfirmSaveCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+
+  <!-- Paleta de comandos -->
+  <Grid x:Name="PaletteLayer" IsVisible="{Binding PaletteOpen}">
+    <Border x:Name="PaletteScrim" Background="#99000000" />
+    <Border Classes="card" Width="540" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,70,0,0">
+      <DockPanel>
+        <TextBox x:Name="PaletteBox" DockPanel.Dock="Top" Classes="palette" Text="{Binding PaletteQuery}"
+                 Watermark="Type a command…" />
+        <Border DockPanel.Dock="Top" Classes="hline" />
+        <ListBox x:Name="PaletteList" Classes="palette" MaxHeight="330" Margin="6"
+                 ItemsSource="{Binding PaletteItems}" SelectedItem="{Binding SelectedPaletteItem}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:PaletteCommand">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="faint" FontSize="11.5" Text="{Binding Shortcut}" VerticalAlignment="Center" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+  </Grid>
+
+  <!-- Toast -->
+  <Border Classes="toast" Classes.show="{Binding ToastVisible}" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+          Margin="0,0,0,48" IsHitTestVisible="False">
+    <TextBlock Text="{Binding ToastText}" />
+  </Border>
+  </Panel>
+</Window>

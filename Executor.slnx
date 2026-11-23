@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Executor.Contracts/Executor.Contracts.csproj" />
+    <Project Path="src/Executor.UI/Executor.UI.csproj" />
+  </Folder>
+  <Folder Name="/backends/">
+    <Project Path="backends/Executor.Backend.Solara/Executor.Backend.Solara.csproj" />
+    <Project Path="backends/Executor.Backend.TestFixture/Executor.Backend.TestFixture.csproj" />
+  </Folder>
+</Solution>

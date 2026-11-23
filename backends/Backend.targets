@@ -1,0 +1,34 @@
+<Project>
+  <!--
+    Comum a todos os projetos de backend (plugins do Executor). Cada csproj define:
+      BackendId, BackendDisplayName, BackendFactory (nome completo do tipo IBackendFactory),
+      BackendRequiresAdmin (true/false). Opcional: BackendContractVersion (padrão 1, igual a ContractInfo.Version).
+
+    Depois do build gera $(OutDir)backend.json: o manifesto que o app lê ANTES de carregar o backend, com o SHA-256 de cada arquivo
+    da pasta de saída. Os hashes servem para INTEGRIDADE (arquivo corrompido/trocado por engano); não autenticam o autor.
+    Veja backends\README.md.
+  -->
+  <PropertyGroup>
+    <BackendContractVersion Condition="'$(BackendContractVersion)' == ''">1</BackendContractVersion>
+    <BackendRequiresAdmin Condition="'$(BackendRequiresAdmin)' == ''">false</BackendRequiresAdmin>
+    <BackendManifestName>backend.json</BackendManifestName>
+  </PropertyGroup>
+
+  <!-- depois do IncrementalClean: o manifesto precisa refletir a pasta FINAL (sem sobras de builds anteriores) -->
+  <Target Name="WriteBackendManifest" AfterTargets="IncrementalClean">
+    <ItemGroup>
+      <_BackendFile Include="$(OutDir)**\*" Exclude="$(OutDir)$(BackendManifestName);$(OutDir)**\*.pdb;$(OutDir)Executor.Contracts.*" />
+    </ItemGroup>
+    <GetFileHash Files="@(_BackendFile)" Algorithm="SHA256" HashEncoding="hex">
+      <Output TaskParameter="Items" ItemName="_BackendHashed" />
+    </GetFileHash>
+    <PropertyGroup>
+      <_BackendFilesJson>@(_BackendHashed->'    "%(RecursiveDir)%(Filename)%(Extension)": "%(FileHash)"', ',%0D%0A')</_BackendFilesJson>
+      <_BackendFilesJson>$(_BackendFilesJson.Replace('\','/'))</_BackendFilesJson>
+      <_BackendAssembly>$(TargetFileName)</_BackendAssembly>
+      <_BackendJson>{%0D%0A  "id": "$(BackendId)",%0D%0A  "displayName": "$(BackendDisplayName)",%0D%0A  "assembly": "$(_BackendAssembly)",%0D%0A  "factory": "$(BackendFactory)",%0D%0A  "contractVersion": $(BackendContractVersion),%0D%0A  "requiresAdmin": $(BackendRequiresAdmin),%0D%0A  "files": {%0D%0A$(_BackendFilesJson)%0D%0A  }%0D%0A}</_BackendJson>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(OutDir)$(BackendManifestName)" Lines="$(_BackendJson)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <Message Importance="high" Text="backend '$(BackendId)': manifesto gerado em $(OutDir)$(BackendManifestName) (@(_BackendHashed->Count()) arquivos)" />
+  </Target>
+</Project>

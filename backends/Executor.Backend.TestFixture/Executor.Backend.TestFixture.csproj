@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    SÓ PARA TESTES: backend mínimo que o autoteste da UI (Debug) carrega de verdade pelo mesmo caminho dos plugins reais.
+    Não é empacotado no app de publicação. Saída copiada para <exe>\test-fixtures\fixture\ pelo build Debug da UI.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <BackendId>fixture</BackendId>
+    <BackendDisplayName>Fixture de teste</BackendDisplayName>
+    <BackendFactory>Executor.TestFixture.FixtureFactory</BackendFactory>
+    <BackendRequiresAdmin>false</BackendRequiresAdmin>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Executor.Contracts\Executor.Contracts.csproj" Private="false" />
+  </ItemGroup>
+
+  <Import Project="..\Backend.targets" />
+
+</Project>
