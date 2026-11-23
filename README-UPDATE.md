@@ -1,73 +1,59 @@
-# Atualização automática do Lazuli
+# Automatic updates
 
-Na abertura (durante a splash) o app consulta `<URL>/main/latest.json`. Se houver versão maior, abre a janela
-**Update** (novidades, tamanho, "Update now" / "Later"). Ao aceitar: baixa com progresso, confere, troca os
-arquivos e reabre sozinho já na versão nova. Cobre o app todo: UI e plugin do backend (`Lazuli.exe` + `backends\solara\`).
+At startup (during the splash) the app asks `<server>/main/latest.json`. If there is a newer version it shows an **Update** window
+(release notes, size, "Update now" / "Later"). On accept it downloads with progress, verifies, swaps the files and relaunches itself.
+It covers the whole app: `Lazuli.exe` and the backend plugin in `backends\solara\`.
 
-**Canal único: `main`.** Todo build recebe as atualizações por ele, qualquer que seja o backend.
-(Os canais antigos `lite` e `xeno` ficam no servidor só para quem ainda usa o `Executor.exe` antigo; não são mais gerados.)
+**One channel: `main`.** Every build gets updates from it.
 
-**Servidor atual:** `https://executor-updates.lpn688c.workers.dev` (Cloudflare Workers com arquivos estáticos; a URL
-está em `src/Executor.UI/Updates/UpdateConfig.cs`, `DefaultBaseUrl`).
+**Current server:** a Cloudflare Worker serving static files; the address is `UpdateConfig.DefaultBaseUrl`
+(`src/Lazuli.UI/Updates/UpdateConfig.cs`).
 
-## O que vai (e o que não vai) no pacote
-O zip leva o `Lazuli.exe`, o `LEIA-ME.txt` e o plugin `backends\solara\` (só código nosso). **Não leva a `SolaraV3.dll`
-nem outros arquivos do Solara**: o app baixa a DLL do site oficial na primeira vez que o usuário clica em Attach
-(confere tamanho e SHA-256 do manifesto oficial) e a mantém atualizada. O script de release falha se algum arquivo do
-Solara entrar no pacote por engano.
+## What goes in (and out of) the package
+The release contains `Lazuli.exe` (with the .NET runtime and the plugin embedded) and the plugin folder `backends\solara\`
+(our own code only). **It does not contain `SolaraV3.dll` or any other Solara file**: the app downloads it from the official site
+(see `backends/README.md`). The release script fails if any such file ends up in the package.
 
-## Segurança (o que garante que ninguém troca o seu app)
-- O manifesto é **assinado** (ECDSA P-256). A chave pública está no app (`Updates/UpdateConfig.cs`); a privada fica só em
-  `scripts\keys\update-private.pem` (fora do git). Sem a assinatura correta, nada é baixado nem instalado.
-- O manifesto traz o **SHA-256** do zip; o app confere durante o download. Zip adulterado ou corrompido é descartado.
-- Só HTTPS (HTTP apenas em `localhost`, para teste). Caminhos do zip são validados (sem sair da pasta do app).
-- A troca de arquivos é **desfeita por completo** se qualquer arquivo falhar (ex.: preso por outro programa).
-- Se o servidor estiver fora do ar ou o PC offline, o app abre normal (a verificação nunca trava a abertura: até ~2,5 s
-  na splash; se demorar mais, o app abre e a oferta aparece depois).
+## Security
+- The manifest is **signed** (ECDSA P-256). The public key is in the app (`UpdateConfig.cs`); the private key lives only in
+  `scripts\keys\update-private.pem` (git-ignored, **back it up**). Without a valid signature nothing is downloaded or installed.
+- The manifest carries the **SHA-256** of the package; the app checks it while downloading. A tampered or corrupted package is discarded.
+- HTTPS only (HTTP is allowed only on `localhost`, for tests). Paths inside the zip are validated.
+- The file swap is **rolled back completely** if any file fails (for example locked by another program).
+- If the server is down or the PC is offline the app opens normally (the check waits at most ~2.5 s on the splash).
+- Packages larger than 25 MiB are split into 20 MiB parts (`.001`, `.002`, …) because Cloudflare static assets are limited to 25 MiB per file.
+  Each part is retried up to 3 times and the SHA-256 of the whole is verified.
 
-> **Faça backup de `scripts\keys\update-private.pem`.** Quem tem esse arquivo publica atualizações no seu nome; se perder,
-> os exes já enviados não aceitam mais atualizações e você precisa mandar um exe novo (nova chave).
-
-## Publicar uma atualização (2 comandos)
-1. Gerar o pacote (compila, empacota e assina; o app precisa estar fechado):
+## Publishing an update
+1. Build, package and sign (the app must be closed):
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\make-update.ps1 -Version 1.0.1 -Notes "Novidade A;Correção B"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\make-update.ps1 -Version 1.0.4 -Notes "Change A;Change B"
 ```
-   Saída: `publish-main\` (o app dessa versão) e **`dist\main\`** (zip + `latest.json` assinados). Escreva as notas em inglês:
-   elas aparecem na janela de atualização.
-2. Subir `dist\` para o Cloudflare (o Wrangler está instalado só neste projeto, em `tools\cloudflare`):
+   Output: `publish-main\` (the app), `release\` (the single `Lazuli.exe` to hand out) and **`dist\main\`** (signed manifest + package parts).
+2. Upload `dist\` with Wrangler (installed only in this project, under `tools\cloudflare`):
 ```powershell
-cd tools\cloudflare; npx --no-install wrangler deploy --assets ..\..\dist --name executor-updates --compatibility-date 2026-11-01
+cd tools\cloudflare; npx --no-install wrangler deploy --assets ..\..\dist --name <your-worker> --compatibility-date 2026-11-01
 ```
-   O comando mostra a URL no final. Quem abrir o app numa versão menor recebe a oferta na próxima abertura.
-   **Não apague `dist\lite` e `dist\xeno`**: o deploy publica a pasta inteira, e apagá-las tira os canais antigos do ar.
+Options of `make-update.ps1`: `-Mandatory` (no "Later" button), `-MinVersion 1.0.0` (older versions are forced to update),
+`-PackageBase https://...` (host the package elsewhere).
 
-Opções do `make-update.ps1`: `-Mandatory` (sem botão "Later"), `-MinVersion 1.0.0` (quem está abaixo é forçado a
-atualizar), `-PackageBase https://...` (zip em outro HTTPS).
+**Always raise the version number**: an equal or lower version is ignored, and an installed copy is only replaced by a newer one.
 
-- A versão vem do `-Version` (vira o `<Version>` do exe). **Sempre suba o número**; versão igual ou menor é ignorada.
-- Limite de **25 MiB por arquivo** nos arquivos estáticos do Cloudflare. O zip está em ~21 MiB. Se passar,
-  hospede o zip em outro HTTPS (ex.: R2 público) e use `-PackageBase`; o manifesto continua no Workers.
-
-## Primeira vez / outra máquina (login no Cloudflare)
+## First time / another machine (Cloudflare login)
 ```powershell
-cd tools\cloudflare; npx --no-install wrangler login      # abre o navegador; você autoriza (a senha não passa pelo Claude)
-npx --no-install wrangler whoami                           # confere a conta
+cd tools\cloudflare; npx --no-install wrangler login      # opens the browser
+npx --no-install wrangler whoami
 ```
-Se `tools\cloudflare\node_modules` não existir: `npm install` nessa pasta. Para trocar de servidor, mude o `--name` do
-deploy e o `DefaultBaseUrl`, e gere o exe de novo.
-A autorização do Wrangler pode ser revogada em *Cloudflare → My Profile → API Tokens*.
+If `tools\cloudflare\node_modules` is missing run `npm install` there. To use another server change the deploy `--name` and `DefaultBaseUrl`.
 
-## Testar sem internet
+## Testing without internet
 ```powershell
-$env:EXECUTOR_UPDATE_URL = 'http://localhost:8099'   # serve a pasta dist\ nessa porta; a assinatura continua exigida
+$env:LAZULI_UPDATE_URL = 'http://localhost:8099'   # serve dist\ on that port; the signature is still required
 ```
-`EXECUTOR_NOUPDATE=1` desliga a verificação. Em build Debug, `EXECUTOR_UPDATE_AUTO=1` aceita a atualização sozinho.
+`LAZULI_NOUPDATE=1` turns the check off. In Debug builds `LAZULI_UPDATE_AUTO=1` accepts the update automatically.
 
-## Observações
-- O app precisa poder gravar na própria pasta (por isso, não instale em `Program Files`; uma pasta sua funciona).
-- Arquivos antigos viram `*.old` durante a troca e são apagados na abertura seguinte.
-- Atualização não apaga arquivos que a versão nova deixou de ter (só troca/adiciona).
-- Quem usa o `Executor.exe` antigo (canais `lite`/`xeno`) **não** migra sozinho para o Lazuli: o exe antigo só enxerga o
-  próprio canal. Esses usuários baixam o zip do Lazuli uma vez; dali em diante atualizam pelo canal `main`.
-- A pasta de dados continua `%APPDATA%\Executor` (abas e configurações são mantidas).
+## Notes
+- The app must be able to write to its own folder (so don't install under `Program Files`; the per-user folder works).
+- Old files become `*.old` during the swap and are deleted on the next start.
+- An update never deletes files the new version no longer has (it only replaces/adds).
+- User data lives in `%APPDATA%\Lazuli` (settings, scripts) and `%LOCALAPPDATA%\Lazuli` (cache, downloads, logs).

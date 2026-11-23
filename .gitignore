@@ -1,4 +1,4 @@
-﻿bin/
+bin/
 obj/
 .nuget/
 publish/
@@ -15,7 +15,7 @@ publish-xeno/
 .test/
 tools/cloudflare/node_modules/
 tools/cloudflare/.npm-cache/
-src/Executor.UI/Embedded/
+src/Lazuli.UI/Embedded/
 release/
 .test/
 
@@ -30,4 +30,4 @@ publish-*/
 .wrangler/
 tools/cloudflare/.wrangler/
 .test/
-src/Executor.UI/app.quorum.manifest
+src/Lazuli.UI/app.quorum.manifest

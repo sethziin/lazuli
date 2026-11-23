@@ -20,12 +20,13 @@ REQUISITOS
 - Na primeira vez ele também baixa sozinho os arquivos do Solara (precisa de internet).
 
 SE O WINDOWS AVISAR
-- "O Windows protegeu seu PC" (SmartScreen): clique em "Mais informações" e depois em "Executar assim mesmo".
-  (O app tem assinatura digital própria, mas ela não é de uma autoridade conhecida; por isso o Windows avisa na primeira vez.)
-- Controle Inteligente de Aplicativos (Smart App Control) ligado: ele bloqueia programas sem assinatura de uma autoridade
-  conhecida e não deixa liberar um por um. É uma configuração do Windows; o Lazuli não mexe nela.
-- Antivírus: o backend baixado (SolaraV3.dll) é uma ferramenta de injeção e muitos antivírus bloqueiam ou apagam por padrão.
-  Se ele sumir ou der erro ao anexar, adicione a pasta do Lazuli às exclusões do antivírus.
+- "O Windows protegeu seu PC" (SmartScreen): clique em "Mais informações" e depois em "Executar assim mesmo". Isso só acontece na primeira vez.
+  O Lazuli é assinado, mas com certificado próprio (certificados que o Windows reconhece são pagos), então o Windows ainda não o conhece.
+- Controle Inteligente de Aplicativos (Smart App Control) ligado: ele pode bloquear programas de editores desconhecidos e não deixa liberar um por um.
+  É uma configuração do Windows e o Lazuli não mexe nela. Se bloquear, é preciso desligar esse recurso do Windows para usar o programa.
+- Antivírus: os arquivos do Solara, baixados pelo Lazuli, são uma ferramenta de injeção e muitos antivírus bloqueiam ou apagam por padrão.
+  Se sumirem ou der erro ao anexar, adicione a pasta do Lazuli às exclusões do antivírus.
+- O Lazuli nunca pede administrador e não instala nada fora das pastas dele (a única exceção é o Visual C++ Runtime da Microsoft, se faltar, e só com a sua permissão).
 
 ATUALIZAÇÕES
 O app procura atualização sozinho ao abrir e pergunta se quer instalar. Tudo é conferido por assinatura digital.

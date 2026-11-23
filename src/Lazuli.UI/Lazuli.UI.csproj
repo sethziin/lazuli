@@ -1,0 +1,112 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ApplicationIcon>Assets\lazuli.ico</ApplicationIcon>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Lazuli</AssemblyName>
+    <!-- informações que o Windows mostra em Propriedades > Detalhes (e que SmartScreen/antivírus leem) -->
+    <Company>Lazuli</Company>
+    <Product>Lazuli</Product>
+    <AssemblyTitle>Lazuli</AssemblyTitle>
+    <Description>Lazuli - script editor and runner for Roblox</Description>
+    <Copyright>Copyright (c) 2026 Lazuli contributors</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- versão do app: o script de publicação passa -p:Version=x.y.z; é ela que o atualizador compara -->
+    <Version>0.1.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <RootNamespace>Lazuli.UI</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Menos custo de runtime: sem PGO dinâmico, GC sem thread de fundo, sem EventSource (telemetria interna) -->
+    <TieredPGO>false</TieredPGO>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <EventSourceSupport>false</EventSourceSupport>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- dotnet publish -c Release: .exe único com o .NET 10 DENTRO (self-contained): roda em qualquer Windows 10/11 x64 sem instalar o .NET.
+       Compressão ligada: ~64 MB em vez de ~150 MB. ReadyToRun = código pré-compilado: abre mais rápido. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- pacotes nativos (Skia/HarfBuzz) trazem .pdb de ~100 MB que não servem na publicação -->
+  <Target Name="RemoveNativePdbs" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_PdbToDelete Include="$(PublishDir)*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_PdbToDelete)" />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lazuli.Contracts\Lazuli.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- só Debug: o backend de teste que o autoteste (LAZULI_SELFTEST) carrega de verdade; vai para test-fixtures\ (nunca para backends\) -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <ProjectReference Include="..\..\backends\Lazuli.Backend.TestFixture\Lazuli.Backend.TestFixture.csproj" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+  <Target Name="BundleTestFixture" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <ItemGroup>
+      <_FixtureFile Include="$(MSBuildThisFileDirectory)..\..\backends\Lazuli.Backend.TestFixture\bin\Debug\net10.0\**\*" Exclude="$(MSBuildThisFileDirectory)..\..\backends\Lazuli.Backend.TestFixture\bin\Debug\net10.0\**\*.pdb;$(MSBuildThisFileDirectory)..\..\backends\Lazuli.Backend.TestFixture\bin\Debug\net10.0\Lazuli.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_FixtureFile)" DestinationFiles="@(_FixtureFile->'$(OutDir)test-fixtures\fixture\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!--
+    dotnet build/publish -p:Backend=solara = canal "solara": o app sai com o plugin Solara em backends\solara\
+    (SolaraV3.dll original + asset inicial). Não precisa de administrador. A UI não referencia o plugin: ele é descoberto em tempo de execução (Backends\BackendCatalog).
+  -->
+  <PropertyGroup Condition="'$(Backend)' == 'solara'">
+    <DefineConstants>$(DefineConstants);BACKEND_SOLARA</DefineConstants>
+    <!-- o código protegido da SolaraV3.dll é incompatível com o CET (shadow stack) que o apphost do .NET liga por padrão:
+         com ele o processo morre com 0xC0000409 logo depois do Attach. O SolaraV3.exe oficial também não usa CET. -->
+    <CetCompat>false</CetCompat>
+    <SolaraBackendProject>$(MSBuildThisFileDirectory)..\..\backends\Lazuli.Backend.Solara\Lazuli.Backend.Solara.csproj</SolaraBackendProject>
+    <_SolaraOutDir>$(MSBuildThisFileDirectory)..\..\backends\Lazuli.Backend.Solara\bin\$(Configuration)\net10.0\</_SolaraOutDir>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Backend)' == 'solara'">
+    <ProjectReference Include="$(SolaraBackendProject)" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+  <Target Name="BundleSolaraBackend" AfterTargets="Build" Condition="'$(Backend)' == 'solara'">
+    <ItemGroup>
+      <_SolaraFile Include="$(_SolaraOutDir)**\*" Exclude="$(_SolaraOutDir)**\*.pdb;$(_SolaraOutDir)Lazuli.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SolaraFile)" DestinationFiles="@(_SolaraFile->'$(OutDir)backends\solara\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="BundleSolaraBackendPublish" AfterTargets="Publish" Condition="'$(Backend)' == 'solara'">
+    <ItemGroup>
+      <_SolaraPubFile Include="$(_SolaraOutDir)**\*" Exclude="$(_SolaraOutDir)**\*.pdb;$(_SolaraOutDir)Lazuli.Contracts.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SolaraPubFile)" DestinationFiles="@(_SolaraPubFile->'$(PublishDir)backends\solara\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Fontes embutidas no exe (licença OFL junto em Assets/Fonts) -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+    <AvaloniaResource Include="Assets\lazuli.ico;Assets\lazuli.png" />
+    <!-- build de lançamento (-p:EmbedSolara=true): o plugin vai DENTRO do exe e é extraído na instalação (veja Services\Installer.cs) -->
+    <EmbeddedResource Include="Embedded\solara\*" Condition="'$(EmbedSolara)' == 'true'" LogicalName="plugin/solara/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Simple" Version="12.1.6" />
+    <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Backend (plugin) Solara: liga a UI (IRunSession) à SolaraV3.dll original, sem o SolaraV3.exe.
+    Faz o mesmo que o launcher oficial faz com a DLL: SetEventSink, Start(guid) e a ponte HTTP local
+    (scan_clients, Attach, execute_script). Não é referenciado pela UI: o app o encontra em backends\solara\ (veja backends\README.md).
+    Com `-p:Backend=solara` o build da UI compila este projeto e copia a saída para backends\solara\.
+    A SolaraV3.dll é de terceiros e NÃO faz parte deste repositório: o app a baixa do site oficial do Solara na primeira abertura.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- opcional (só para desenvolvimento offline): -p:SolaraDir=<pasta com SolaraV3.dll e bin\DLCTBL_FRTS> empacota uma cópia local da DLL -->
+
+    <BackendId>solara</BackendId>
+    <BackendDisplayName>Solara</BackendDisplayName>
+    <BackendFactory>Lazuli.SolaraBackend.SolaraFactory</BackendFactory>
+    <BackendRequiresAdmin>false</BackendRequiresAdmin>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Lazuli.Contracts\Lazuli.Contracts.csproj" Private="false" />
+    <!-- só entram se SolaraDir foi informado e os arquivos existem (e BundleSolaraDll não é false) -->
+    <None Include="$(SolaraDir)\SolaraV3.dll" CopyToOutputDirectory="PreserveNewest" Link="SolaraV3.dll" Condition="'$(SolaraDir)' != '' And Exists('$(SolaraDir)\SolaraV3.dll') And '$(BundleSolaraDll)' != 'false'" />
+    <None Include="$(SolaraDir)\bin\DLCTBL_FRTS" CopyToOutputDirectory="PreserveNewest" Link="DLCTBL_FRTS.seed" Condition="'$(SolaraDir)' != '' And Exists('$(SolaraDir)\bin\DLCTBL_FRTS') And '$(BundleSolaraDll)' != 'false'" />
+  </ItemGroup>
+
+  <Import Project="..\Backend.targets" />
+
+</Project>

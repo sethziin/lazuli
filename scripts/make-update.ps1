@@ -21,7 +21,19 @@ $key = Join-Path $PSScriptRoot 'keys\update-private.pem'
 if (-not (Test-Path $key)) { throw "Falta $key. Gere com: dotnet run --project tools\UpdateTool -- keygen scripts\keys" }
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a versão no formato 1.2.3' }
 $dist = Join-Path $root 'dist'
-$proj = Join-Path $root 'src\Executor.UI\Executor.UI.csproj'
+
+# ---- assinatura (certificado autoassinado "Lazuli", criado por scripts\make-cert.ps1) ----
+# Autoassinado dá a assinatura e a identidade "Lazuli" ao arquivo, mas o Windows só confia em certificados de autoridades reconhecidas.
+$cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue | Where-Object { $_.Subject -eq 'CN=Lazuli' -and $_.NotAfter -gt (Get-Date) } | Select-Object -First 1
+if (-not $cert) { throw 'Falta o certificado de assinatura "CN=Lazuli". Crie com: powershell -File scripts\make-cert.ps1' }
+function Sign-File($path) {
+    # com carimbo de hora (serviço gratuito da DigiCert): a assinatura continua datada mesmo depois de o certificado vencer; sem rede, assina sem carimbo
+    $sig = Set-AuthenticodeSignature -FilePath $path -Certificate $cert -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com' -ErrorAction SilentlyContinue
+    if (-not $sig -or -not $sig.SignerCertificate) { $sig = Set-AuthenticodeSignature -FilePath $path -Certificate $cert -HashAlgorithm SHA256 }
+    if ($sig.Status -eq 'HashMismatch' -or -not $sig.SignerCertificate) { throw "falha ao assinar $path" }
+    Write-Output "   assinado: $(Split-Path $path -Leaf) ($($cert.Thumbprint.Substring(0,8))...)"
+}
+$proj = Join-Path $root 'src\Lazuli.UI\Lazuli.UI.csproj'
 $out = Join-Path $root "publish-$channel"
 
 # o app precisa estar fechado para não travar a publicação
@@ -31,23 +43,28 @@ if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 Write-Output "== Compilando $channel $Version"
 
 # 1) plugin do backend limpo (sem a DLL de terceiros) -> vai embutido no exe (o exe se instala sozinho; veja Installer.cs)
-$pluginProj = Join-Path $root 'backends\Executor.Backend.Solara\Executor.Backend.Solara.csproj'
+$pluginProj = Join-Path $root 'backends\Lazuli.Backend.Solara\Lazuli.Backend.Solara.csproj'
 $pluginDir = Split-Path $pluginProj -Parent
 Remove-Item (Join-Path $pluginDir 'bin'), (Join-Path $pluginDir 'obj') -Recurse -Force -ErrorAction SilentlyContinue
 dotnet build $pluginProj -c Release -p:BundleSolaraDll=false --nologo -v q | Select-String ' error ' | ForEach-Object { throw $_.Line }
 if ($LASTEXITCODE -ne 0) { throw 'build do plugin falhou' }
-$emb = Join-Path $root 'src\Executor.UI\Embedded\solara'
+$emb = Join-Path $root 'src\Lazuli.UI\Embedded\solara'
 if (Test-Path $emb) { Remove-Item $emb -Recurse -Force }
 New-Item $emb -ItemType Directory | Out-Null
-Get-ChildItem (Join-Path $pluginDir 'bin\Release\net10.0') -File | Where-Object { $_.Extension -ne '.pdb' -and $_.Name -notlike 'Executor.Contracts.*' } | Copy-Item -Destination $emb
+Get-ChildItem (Join-Path $pluginDir 'bin\Release\net10.0') -File | Where-Object { $_.Extension -ne '.pdb' -and $_.Name -notlike 'Lazuli.Contracts.*' } | Copy-Item -Destination $emb
+# O plugin NÃO é assinado de propósito: testado, com assinatura autoassinada o Controle Inteligente de Aplicativos do Windows BLOQUEIA o carregamento
+# da DLL (o app cai no modo demonstração); sem assinatura ela carrega. Quem garante a integridade do plugin é o SHA-256 do backend.json.
 
 # 2) o app, com o plugin embutido
 dotnet publish $proj -c Release -p:Backend=solara -p:BundleSolaraDll=false -p:EmbedSolara=true "-p:Version=$Version" -o $out --nologo | Select-String ' error ' | ForEach-Object { throw $_.Line }
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish falhou' }
 Copy-Item (Join-Path $PSScriptRoot 'LEIA-ME.txt') $out   # vai dentro do zip (quem recebe lê os requisitos)
 
+# o plugin publicado é o mesmo que foi embutido no exe (garante hashes idênticos)
+$pubPlugin = Join-Path $out 'backends\solara'
+Get-ChildItem $emb -File | Copy-Item -Destination $pubPlugin -Force
+foreach ($f in Get-ChildItem $emb -File) { if ((Get-FileHash $f.FullName).Hash -ne (Get-FileHash (Join-Path $pubPlugin $f.Name)).Hash) { throw "plugin embutido difere do publicado: $($f.Name)" } }
 Remove-Item (Split-Path $emb -Parent) -Recurse -Force   # pasta temporária de embutir
-# o que está embutido tem que ser idêntico ao plugin da pasta publicada
 # garante que nada de terceiros foi junto
 $stray = Get-ChildItem $out -Recurse -File | Where-Object { $_.Name -match '^SolaraV3|DLCTBL|\.seed$' }
 if ($stray) { throw "Arquivo de terceiros no pacote: $($stray.FullName -join ', ')" }
@@ -65,13 +82,8 @@ foreach ($bj in Get-ChildItem (Join-Path $out 'backends') -Recurse -Filter backe
     Write-Output "   backend $($m.id): manifesto confere ($(@($m.files.PSObject.Properties).Count) arquivos)"
 }
 
-# assina o exe (certificado autoassinado "CN=Executor" do usuário, se existir)
-$cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue | Where-Object { $_.Subject -eq 'CN=Executor' } | Select-Object -First 1
-if ($cert) {
-    $sig = Set-AuthenticodeSignature -FilePath (Join-Path $out 'Lazuli.exe') -Certificate $cert -HashAlgorithm SHA256
-    if ($sig.Status -eq 'HashMismatch') { throw 'assinatura inválida' }
-    Write-Output "   assinado ($($cert.Thumbprint.Substring(0,8))...) status: $($sig.Status)"
-} else { Write-Output '   AVISO: sem certificado "CN=Executor"; exe sem assinatura' }
+# assina o exe
+Sign-File (Join-Path $out 'Lazuli.exe')
 
 # versões antigas do pacote não precisam ficar no servidor (os apps só baixam a última)
 Remove-Item (Join-Path $dist $channel) -Recurse -Force -ErrorAction SilentlyContinue

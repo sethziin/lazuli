@@ -1,6 +1,6 @@
 <Project>
   <!--
-    Comum a todos os projetos de backend (plugins do Executor). Cada csproj define:
+    Comum a todos os projetos de backend (plugins do Lazuli). Cada csproj define:
       BackendId, BackendDisplayName, BackendFactory (nome completo do tipo IBackendFactory),
       BackendRequiresAdmin (true/false). Opcional: BackendContractVersion (padrão 1, igual a ContractInfo.Version).
 
@@ -17,7 +17,7 @@
   <!-- depois do IncrementalClean: o manifesto precisa refletir a pasta FINAL (sem sobras de builds anteriores) -->
   <Target Name="WriteBackendManifest" AfterTargets="IncrementalClean">
     <ItemGroup>
-      <_BackendFile Include="$(OutDir)**\*" Exclude="$(OutDir)$(BackendManifestName);$(OutDir)**\*.pdb;$(OutDir)Executor.Contracts.*" />
+      <_BackendFile Include="$(OutDir)**\*" Exclude="$(OutDir)$(BackendManifestName);$(OutDir)**\*.pdb;$(OutDir)Lazuli.Contracts.*" />
     </ItemGroup>
     <GetFileHash Files="@(_BackendFile)" Algorithm="SHA256" HashEncoding="hex">
       <Output TaskParameter="Items" ItemName="_BackendHashed" />

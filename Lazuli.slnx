@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lazuli.Contracts/Lazuli.Contracts.csproj" />
+    <Project Path="src/Lazuli.UI/Lazuli.UI.csproj" />
+  </Folder>
+  <Folder Name="/backends/">
+    <Project Path="backends/Lazuli.Backend.Solara/Lazuli.Backend.Solara.csproj" />
+    <Project Path="backends/Lazuli.Backend.TestFixture/Lazuli.Backend.TestFixture.csproj" />
+  </Folder>
+</Solution>
