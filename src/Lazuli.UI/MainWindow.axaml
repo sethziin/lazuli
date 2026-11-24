@@ -337,6 +337,12 @@
                   <!-- Paleta de comandos -->
                   <!-- layout simples: o Attach fica aqui embaixo, à direita -->
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding IsSimple}">
+                    <Button Classes="ghost" Classes.on="{Binding ConsoleOpen}" Height="30" Padding="10,0" Command="{Binding ToggleConsoleCommand}" AutomationProperties.Name="Output">
+                      <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                        <local:Ico Data="{StaticResource IconTerminal}" Width="16" Height="16" />
+                        <TextBlock Text="Output" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
                     <Button Classes="attach" Classes.on="{Binding IsAttached}" Command="{Binding AttachCommand}" IsEnabled="{Binding CanAttach}">
                       <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <local:Ico Data="{StaticResource IconLink}" Width="15" Height="15" IsVisible="{Binding !IsAttached}" />
@@ -718,6 +724,29 @@
           <Button Classes="secondary" Content="Cancel" Command="{Binding ConfirmCancelCommand}" />
           <Button Classes="secondary" Content="Discard" Command="{Binding ConfirmDiscardCommand}" />
           <Button Classes="secondary default" Content="Save" Command="{Binding ConfirmSaveCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+
+  <!-- Versão do Roblox (aviso de versão diferente + baixar/abrir a suportada) -->
+  <Grid x:Name="VersionLayer" IsVisible="{Binding VersionOpen}">
+    <Border Background="#99000000" />
+    <Border Classes="card" Width="410" Padding="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding VersionTitle}" FontSize="15" FontWeight="SemiBold" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding VersionText}" />
+        <StackPanel Spacing="6" Margin="0,10,0,0" IsVisible="{Binding VersionBusy}">
+          <ProgressBar Minimum="0" Maximum="100" Value="{Binding VersionProgress}" Height="4" MinHeight="4"
+                       Foreground="{StaticResource Accent}" Background="{StaticResource Line}" CornerRadius="2" />
+          <TextBlock Classes="faint" FontSize="11.5" Text="{Binding VersionProgressText}" />
+        </StackPanel>
+        <TextBlock TextWrapping="Wrap" Foreground="#F0928A" Text="{Binding VersionError}"
+                   IsVisible="{Binding VersionError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,18,0,0">
+          <Button Classes="secondary" Content="{Binding VersionCloseLabel}" Command="{Binding VersionCloseCommand}" />
+          <Button Classes="secondary default" Content="{Binding VersionPrimaryLabel}" Command="{Binding VersionPrimaryCommand}"
+                  IsVisible="{Binding VersionCanPrimary}" IsEnabled="{Binding !VersionBusy}" />
         </StackPanel>
       </StackPanel>
     </Border>

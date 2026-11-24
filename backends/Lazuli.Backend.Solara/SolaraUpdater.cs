@@ -103,7 +103,7 @@ internal sealed class SolaraUpdater(string bundledDll, string storeDir)
             File.Move(tmp, cached, true);
             Remember(cached);
             Prune(cached);
-            log(LogLevel.Success, "SolaraV3.dll atualizada e conferida (SHA-256).");
+            log(LogLevel.Success, "SolaraV3.dll updated and verified (SHA-256).");
             return cached;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -122,6 +122,14 @@ internal sealed class SolaraUpdater(string bundledDll, string storeDir)
         SupportedClient = Str(manifest.Value, "supportedClient") ?? SupportedClient;
         var entry = FindFile(manifest.Value, DllName);
         return entry is not null && await Sha256Async(inUse, ct) != entry.Value.Hash;
+    }
+
+    /// <summary>Lê o supportedClient do manifesto (se ainda não leu). null = sem rede ou o manifesto não informa.</summary>
+    public async Task<string?> RefreshSupportedAsync(CancellationToken ct)
+    {
+        var (_, manifest) = await FetchManifestAsync(ct);
+        if (manifest is not null) SupportedClient = Str(manifest.Value, "supportedClient") ?? SupportedClient;
+        return SupportedClient;
     }
 
     private static async Task<(string Mirror, JsonElement? Manifest)> FetchManifestAsync(CancellationToken ct)

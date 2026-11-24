@@ -306,6 +306,14 @@ public static class SelfTest
         Check("paleta: seta para cima no topo dá a volta", vm.SelectedPaletteItem == vm.PaletteItems[^1] && vm.SelectedPaletteItem != first);
         vm.ClosePalette();
 
+        // versão do Roblox (sem rede: só o formato)
+        Check("roblox: nome de versão válido", Services.RobloxDeployer.IsValidVersion("version-2c6fd5e09aaf4cfa"));
+        Check("roblox: rejeita nome inválido ou caminho", !Services.RobloxDeployer.IsValidVersion("version-..\\x") && !Services.RobloxDeployer.IsValidVersion(null) && !Services.RobloxDeployer.IsValidVersion("version-abc"));
+        var pk = Services.RobloxDeployer.ParseManifest("v0\r\nRobloxApp.zip\r\nABCDEF\r\n100\r\n200\r\nshaders.zip\r\n0011\r\n5\r\n9\r\n");
+        Check("roblox: lê o manifesto de pacotes", pk.Count == 2 && pk[0].Name == "RobloxApp.zip" && pk[0].Md5 == "abcdef" && pk[1].Size == 5);
+        Check("roblox: manifesto em formato estranho dá erro", ((Func<bool>)(() => { try { Services.RobloxDeployer.ParseManifest("<html>"); return false; } catch (InvalidDataException) { return true; } }))());
+        Check("roblox: diálogo começa fechado", !vm.VersionOpen && !vm.VersionBusy);
+
         // zoom
         settings.EditorFontSize = 13;
         vm.Zoom(+1); var z1 = settings.EditorFontSize;

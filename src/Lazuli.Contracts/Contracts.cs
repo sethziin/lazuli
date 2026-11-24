@@ -55,6 +55,9 @@ public interface IRunSession
         RunAsync(source, ct);
 
     /// <summary>Encerra processos do alvo (null = todos). Só pode mexer no processo do alvo, nunca em outros programas.</summary>
+    /// <summary>Versão do alvo que este backend suporta (no Roblox, o nome da pasta: "version-xxxxxxxxxxxxxxxx"), ou null se não sabe. Pode consultar a rede.</summary>
+    Task<string?> GetSupportedTargetVersionAsync(CancellationToken ct = default) => Task.FromResult<string?>(null);
+
     Task<IReadOnlyList<LogLine>> KillAsync(IReadOnlyCollection<int>? pids, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<LogLine>>([new(DateTime.Now, LogLevel.Warning, "This backend can't close the target.")]);
 }

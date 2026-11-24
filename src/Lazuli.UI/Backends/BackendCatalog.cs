@@ -64,7 +64,7 @@ public static class BackendCatalog
             }
             catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
             {
-                problems.Add(new(dir, $"Pasta \"{name}\" ignorada: {ex.Message}"));
+                problems.Add(new(dir, $"Folder \"{name}\" skipped: {ex.Message}"));
             }
         }
         return new BackendDiscovery(found, problems);

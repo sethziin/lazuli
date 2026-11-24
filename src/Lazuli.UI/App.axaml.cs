@@ -254,6 +254,15 @@ public partial class App : Application
             if (Has("menu")) vm.OpenTabMenu(vm.Tabs[1], 170, 46);
             if (Has("confirm")) vm.CloseTabCommand.Execute(vm.Tabs[1]);
             if (Has("drop")) vm.DropHint = true;
+            if (Has("version") || Has("versionbusy"))
+            {
+                vm.VersionTitle = "Version mismatch";
+                vm.VersionText = "Your Roblox client (version-1a2b3c4d5e6f7a8b) isn't supported by this build.\n\nSupported client: version-2c6fd5e09aaf4cfa";
+                vm.VersionPrimaryLabel = "Install supported version";
+                vm.VersionCanPrimary = true;
+                if (Has("versionbusy")) { vm.VersionBusy = true; vm.VersionProgress = 42; vm.VersionProgressText = "Downloading… 95 of 226 MB"; }
+                vm.VersionOpen = true;
+            }
             if (Has("toast")) vm.ShowToast("Salvo · loops.lua");
             if (Has("search")) window.OpenSearch();
             if (Has("rename")) vm.BeginRenameCommand.Execute(vm.Tabs[1]);
@@ -273,7 +282,7 @@ public partial class App : Application
             if (views.FirstOrDefault(v => v.StartsWith("update")) is { } uview)
             {
                 var info = new UpdateInfo(new Version(0, 2, 0), uview == "updatemandatory",
-                    ["Atualização automática com verificação na abertura", "Barra de status centralizada e hover sem flash", "Animações mais rápidas"],
+                    ["Automatic update check on startup", "Centered status bar and smoother hover", "Faster animations"],
                     new Uri("https://example.invalid/x.zip"), new string('a', 64), 52_900_000, "2026-11-21");
                 var uw = new UpdateWindow(new UpdateService(), info)
                 {

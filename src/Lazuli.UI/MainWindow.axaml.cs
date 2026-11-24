@@ -185,6 +185,7 @@ public partial class MainWindow : Window
         {
             if (_vm.PaletteOpen) { _vm.ClosePalette(); FocusEditor(); }
             else if (_vm.ConfirmOpen) _vm.ConfirmCancelCommand.Execute(null);
+            else if (_vm.VersionOpen) { if (!_vm.VersionBusy) _vm.VersionCloseCommand.Execute(null); }
             else if (_vm.TabMenuOpen) _vm.CloseTabMenuCommand.Execute(null);
             else return;
             e.Handled = true;
@@ -192,7 +193,7 @@ public partial class MainWindow : Window
         }
 
         if (e.Key == Key.F2 && !ctrl) { _vm.BeginRenameCommand.Execute(null); e.Handled = true; return; }
-        if (!ctrl || _vm.ConfirmOpen) return;
+        if (!ctrl || _vm.ConfirmOpen || _vm.VersionOpen) return;
 
         switch (e.Key)
         {
@@ -479,6 +480,9 @@ public partial class MainWindow : Window
                 break;
             case nameof(MainViewModel.ConfirmOpen) when vm.ConfirmOpen:
                 Dispatcher.UIThread.Post(() => Motion.FadeIn(ConfirmLayer, 110), DispatcherPriority.Loaded);
+                break;
+            case nameof(MainViewModel.VersionOpen) when vm.VersionOpen:
+                Dispatcher.UIThread.Post(() => Motion.FadeIn(VersionLayer, 110), DispatcherPriority.Loaded);
                 break;
             case nameof(MainViewModel.TabMenuOpen) when vm.TabMenuOpen:
                 Dispatcher.UIThread.Post(() => Motion.FadeIn(TabMenuLayer, 90), DispatcherPriority.Loaded);

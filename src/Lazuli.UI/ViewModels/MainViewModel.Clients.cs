@@ -49,7 +49,7 @@ public partial class MainViewModel
         {
             if (Clients.Count == 0) return "No Roblox open";
             var sel = Clients.Count(c => c.IsSelected);
-            if (sel > 0) return sel == 1 ? "Executar em 1 cliente escolhido" : $"Executar em {sel} clientes escolhidos";
+            if (sel > 0) return sel == 1 ? "Execute on 1 selected client" : $"Execute on {sel} selected clients";
             var att = Clients.Count(c => c.IsAttached);
             return att == 0 ? "Attach to execute" : att == 1 ? "Executes on the attached client" : $"Executes on all {att} attached";
         }
@@ -181,7 +181,7 @@ public partial class MainViewModel
         {
             var lines = await _session.KillAsync(pids);
             foreach (var l in lines) Log(l.Level, l.Text, l.Time);
-            ShowToast(pids is null ? "Roblox encerrado" : "Cliente encerrado");
+            ShowToast(pids is null ? "Roblox closed" : "Client closed");
         }
         catch (Exception ex) { Log(LogLevel.Error, ex.Message); }
         await RefreshClients();

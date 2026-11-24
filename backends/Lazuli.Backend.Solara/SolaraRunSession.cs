@@ -122,27 +122,27 @@ public sealed class SolaraRunSession : IRunSession
             if (code == 2)
             {
                 _banned = true;
-                _status = "Solara · banido";
+                _status = "Solara · banned";
                 Add(LogLevel.Error, new SolaraBannedException().Message);
                 return false;
             }
             if (code == -1)
             {
-                _status = "Solara · falhou ao iniciar";
-                Add(LogLevel.Error, $"Start() da SolaraV3.dll devolveu -1 (falha). Veja {Path.Combine(bin, "DEBUG.txt")}.");
+                _status = "Solara · failed to start";
+                Add(LogLevel.Error, $"SolaraV3.dll Start() returned -1 (failure). See {Path.Combine(bin, "DEBUG.txt")}.");
                 return false;
             }
             if (code < 1 || code > 65535)
             {
-                _status = "Solara · falhou ao iniciar";
-                Add(LogLevel.Error, $"Start() devolveu uma porta inválida ({code}).");
+                _status = "Solara · failed to start";
+                Add(LogLevel.Error, $"Start() returned an invalid port ({code}).");
                 return false;
             }
 
             _bridge = new SolaraBridge(code, guid);
             _status = "Solara · ready";
             var ver = FileVersionInfo.GetVersionInfo(dll).FileVersion ?? "?";
-            Add(LogLevel.Info, $"Solara {ver} iniciado (ponte local na porta {code}). Log da DLL: {Path.Combine(bin, "DEBUG.txt")}");
+            Add(LogLevel.Info, $"Solara {ver} started (local bridge on port {code}). DLL log: {Path.Combine(bin, "DEBUG.txt")}");
             // a DLL só aceita um Start por processo: uma versão nova lançada depois só entra ao reabrir o app
             _updateTimer = new Timer(_ => _ = CheckForUpdateAsync(), null, TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(10));
             return true;
@@ -155,7 +155,7 @@ public sealed class SolaraRunSession : IRunSession
         }
         catch (Exception ex)
         {
-            _status = "Solara · erro";
+            _status = "Solara · error";
             Add(LogLevel.Error, ex.Message);
             return false;
         }
@@ -184,7 +184,7 @@ public sealed class SolaraRunSession : IRunSession
         var result = new List<ClientInfo>();
         List<SolaraClient> sc;
         try { sc = _bridge is null ? [] : ScanAsync(CancellationToken.None).GetAwaiter().GetResult(); }
-        catch (SolaraBannedException) { _banned = true; _status = "Solara · banido"; sc = []; }
+        catch (SolaraBannedException) { _banned = true; _status = "Solara · banned"; sc = []; }
         catch { sc = Cached(); }
 
         Process[] ps;
@@ -200,15 +200,15 @@ public sealed class SolaraRunSession : IRunSession
                 try { parts.Add($"{p.WorkingSet64 / 1048576} MB"); } catch { }
                 try { parts.Add(Uptime(DateTime.Now - p.StartTime)); } catch { }
                 var title = s is { Username.Length: > 0 } ? s.Username : "Roblox";
-                var tip = _bridge is null ? "Clique em Attach para iniciar o Solara."
+                var tip = _bridge is null ? "Click Attach to start Solara."
                     : s is null ? "Not listed by Solara yet." : $"Solara state: {s.Status}";
                 result.Add(new ClientInfo(p.Id, title, string.Join(" · ", parts), s?.Attached == true, tip));
             }
         }
         // client_id que não bate com nenhum PID (o relatório trata client_id = PID como hipótese): mostra assim mesmo
         foreach (var s in sc.Where(c => !seen.Contains(c.Id)))
-            result.Add(new ClientInfo(s.Id, s.Username.Length > 0 ? s.Username : $"Cliente {s.Id}", StatusLabel(s), s.Attached,
-                "client_id do Solara sem processo correspondente."));
+            result.Add(new ClientInfo(s.Id, s.Username.Length > 0 ? s.Username : $"Client {s.Id}", StatusLabel(s), s.Attached,
+                "Solara client_id with no matching process."));
         return result;
     }
 
@@ -220,7 +220,7 @@ public sealed class SolaraRunSession : IRunSession
     };
 
     private static string Uptime(TimeSpan t) =>
-        t.TotalHours >= 1 ? $"{(int)t.TotalHours} h {t.Minutes:00} min" : t.TotalMinutes >= 1 ? $"{(int)t.TotalMinutes} min" : "agora";
+        t.TotalHours >= 1 ? $"{(int)t.TotalHours} h {t.Minutes:00} min" : t.TotalMinutes >= 1 ? $"{(int)t.TotalMinutes} min" : "just now";
 
     // ---------- attach ----------
 
@@ -238,7 +238,12 @@ public sealed class SolaraRunSession : IRunSession
                 return lines;
             }
             if (!await EnsureStartedAsync(lines, ct)) return lines;
-            WarnIfRobloxUnsupported(lines);
+            // versão errada: a DLL não anexa e só desistiria depois de ~30 s esperando; recusa na hora (como o Solara oficial)
+            if (!CheckRobloxVersion(lines))
+            {
+                _status = "Solara · unsupported Roblox version";
+                return lines;
+            }
             var bridge = _bridge!;
 
             // a DLL descobre os processos sozinha; dá alguns segundos para ela listar
@@ -250,7 +255,7 @@ public sealed class SolaraRunSession : IRunSession
             }
             if (clients.Count == 0)
             {
-                _status = "Solara · nenhum cliente";
+                _status = "Solara · no clients";
                 Add(LogLevel.Error, "Solara found no open Roblox.");
                 return lines;
             }
@@ -258,7 +263,7 @@ public sealed class SolaraRunSession : IRunSession
             var pending = clients.Where(c => !c.Attached).ToList();
             foreach (var c in pending)
             {
-                _status = "Solara · anexando…";
+                _status = "Solara · attaching…";
                 var raw = await bridge.AttachAsync(c.Id, ct);
                 if (raw == "^")
                     Add(LogLevel.Error, $"Client {c.Id}: Solara couldn't read the Roblox version (Roblox may be running as administrator).");
@@ -284,25 +289,25 @@ public sealed class SolaraRunSession : IRunSession
             }
             else if (waiting > 0)
             {
-                _status = "Solara · esperando o jogo";
+                _status = "Solara · waiting for game";
                 Add(LogLevel.Warning, "Attached, but Roblox isn't in a game yet. Join a game to execute scripts.");
             }
             else
             {
-                _status = "Solara · falhou ao anexar";
-                Add(LogLevel.Error, $"Tempo esgotado: nenhum cliente anexou. Veja {Path.Combine(_workDir, "bin", "DEBUG.txt")}.");
+                _status = "Solara · attach failed";
+                Add(LogLevel.Error, $"Timed out: no client attached. See {Path.Combine(_workDir, "bin", "DEBUG.txt")}.");
             }
         }
         catch (SolaraBannedException ex)
         {
             _banned = true;
-            _status = "Solara · banido";
+            _status = "Solara · banned";
             Add(LogLevel.Error, ex.Message);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            _status = "Solara · erro";
+            _status = "Solara · error";
             Add(LogLevel.Error, ex.Message);
         }
         finally { _gate.Release(); }
@@ -340,22 +345,22 @@ public sealed class SolaraRunSession : IRunSession
             {
                 try { await _bridge.ExecuteAsync(c.Id, source, ct); ok++; }
                 catch (SolaraBannedException) { throw; }
-                catch (Exception ex) { lines.Add(new(DateTime.Now, LogLevel.Error, $"Cliente {c.Id}: {ex.Message}")); }
+                catch (Exception ex) { lines.Add(new(DateTime.Now, LogLevel.Error, $"Client {c.Id}: {ex.Message}")); }
             }
             if (ok > 0)
-                lines.Insert(0, new(DateTime.Now, LogLevel.Success, ok == 1 ? $"Script enviado ao cliente {targets[0].Id}." : $"Script enviado a {ok} clientes."));
+                lines.Insert(0, new(DateTime.Now, LogLevel.Success, ok == 1 ? $"Script sent to client {targets[0].Id}." : $"Script sent to {ok} clients."));
             return lines;
         }
         catch (SolaraBannedException ex)
         {
             _banned = true;
-            _status = "Solara · banido";
+            _status = "Solara · banned";
             return [new(DateTime.Now, LogLevel.Error, ex.Message)];
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            _status = "Solara · erro";
+            _status = "Solara · error";
             return [new(DateTime.Now, LogLevel.Error, ex.Message)];
         }
         finally { _gate.Release(); }
@@ -363,26 +368,38 @@ public sealed class SolaraRunSession : IRunSession
 
     // ---------- atualização ----------
 
+    public async Task<string?> GetSupportedTargetVersionAsync(CancellationToken ct = default) =>
+        _updater.SupportedClient ?? await _updater.RefreshSupportedAsync(ct);
+
     /// <summary>Compara a pasta de versão do Roblox aberto (…\Versions\version-xxx\) com o supportedClient do manifesto.</summary>
-    private void WarnIfRobloxUnsupported(List<LogLine> lines)
+    /// <returns>false quando nenhum Roblox aberto é da versão suportada (não adianta tentar anexar).</returns>
+    private bool CheckRobloxVersion(List<LogLine> lines)
     {
         var supported = _updater.SupportedClient;
-        if (string.IsNullOrEmpty(supported)) return;
+        if (string.IsNullOrEmpty(supported)) return true; // não sabe: tenta assim mesmo
+        var wrong = new List<string>();
+        var matching = 0;
         foreach (var p in Process.GetProcessesByName(RobloxProcess))
         {
             using (p)
             {
                 string? folder = null;
                 try { folder = Path.GetFileName(Path.GetDirectoryName(p.MainModule?.FileName)); } catch { }
-                if (folder is { Length: > 0 } && folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase) &&
-                    !folder.Equals(supported, StringComparison.OrdinalIgnoreCase))
-                {
-                    lines.Add(new(DateTime.Now, LogLevel.Warning,
-                        $"Open Roblox ({folder}) differs from the version Solara supports ({supported}). Attach may fail until Solara updates."));
-                    return;
-                }
+                if (folder is not { Length: > 0 } || !folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase)) { matching++; continue; } // não deu para ler: deixa a DLL decidir
+                if (folder.Equals(supported, StringComparison.OrdinalIgnoreCase)) matching++;
+                else if (!wrong.Contains(folder)) wrong.Add(folder);
             }
         }
+        if (wrong.Count == 0) return true;
+        if (matching > 0)
+        {
+            lines.Add(new(DateTime.Now, LogLevel.Warning,
+                $"Some open Roblox windows ({string.Join(", ", wrong)}) aren't the version Solara supports ({supported}); only the others can attach."));
+            return true;
+        }
+        lines.Add(new(DateTime.Now, LogLevel.Error,
+            $"Attach failed: Roblox {string.Join(", ", wrong)} isn't supported by this Solara build (supported: {supported})."));
+        return false;
     }
 
     private async Task CheckForUpdateAsync()
@@ -428,7 +445,7 @@ public sealed class SolaraRunSession : IRunSession
             }
         }
         if (root.TryGetProperty("dropped", out var d) && d.TryGetInt32(out var dropped) && dropped > 0)
-            LogReceived?.Invoke(new LogLine(DateTime.Now, LogLevel.Warning, $"[{id}] {dropped} linhas do console foram descartadas."));
+            LogReceived?.Invoke(new LogLine(DateTime.Now, LogLevel.Warning, $"[{id}] {dropped} console lines were dropped."));
     }
 
     // ---------- encerrar ----------
@@ -442,7 +459,7 @@ public sealed class SolaraRunSession : IRunSession
         var targets = pids is null
             ? Process.GetProcessesByName(RobloxProcess).Select(p => { var id = p.Id; p.Dispose(); return id; }).ToList()
             : pids.Distinct().ToList();
-        if (targets.Count == 0) { Add(LogLevel.Info, "O Roblox já está fechado."); return lines; }
+        if (targets.Count == 0) { Add(LogLevel.Info, "Roblox is already closed."); return lines; }
 
         var killed = 0;
         foreach (var pid in targets)
@@ -460,11 +477,11 @@ public sealed class SolaraRunSession : IRunSession
                 killed++;
                 Add(LogLevel.Info, $"PID {pid} encerrado.");
             }
-            catch (ArgumentException) { Add(LogLevel.Info, $"PID {pid} já tinha fechado."); }
+            catch (ArgumentException) { Add(LogLevel.Info, $"PID {pid} had already closed."); }
             catch (Exception ex) { Add(LogLevel.Error, $"Couldn't kill PID {pid}: {ex.Message}"); }
         }
         if (killed > 0) _status = "Solara · Roblox encerrado";
-        if (killed > 1) Add(LogLevel.Success, $"{killed} processos do Roblox encerrados.");
+        if (killed > 1) Add(LogLevel.Success, $"Closed {killed} Roblox processes.");
         return lines;
     }, ct);
 }

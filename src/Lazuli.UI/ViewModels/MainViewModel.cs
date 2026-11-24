@@ -781,7 +781,7 @@ public partial class MainViewModel : ObservableObject
         {
             IsTargetRunning = false;
             Log(LogLevel.Warning, "Roblox isn't open. Open the game and try again.");
-            ShowToast("Abra o Roblox primeiro");
+            ShowToast("Open Roblox first");
             return;
         }
         IsAttaching = true;
@@ -799,6 +799,7 @@ public partial class MainViewModel : ObservableObject
             IsAttaching = false;
             OnPropertyChanged(nameof(Status));
             _ = RefreshClients();
+            if (!IsAttached) _ = CheckVersionAfterAttach();
         }
     }
 

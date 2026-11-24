@@ -348,6 +348,13 @@
                   </StackPanel>
                   <CheckBox Grid.Column="1" Classes="toggle" IsChecked="{Binding Settings.MultiClient}" />
                 </Grid></Border>
+                <Border Classes="srow core" Tag="roblox version supported downgrade upgrade install open mismatch"><Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="rtitle" Text="Roblox version" />
+                    <TextBlock Classes="rdesc" Text="Download and open the Roblox version the backend supports. Your normal Roblox install isn't touched." />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="secondary" Content="Manage" Command="{Binding OpenRobloxVersionCommand}" VerticalAlignment="Center" />
+                </Grid></Border>
               </StackPanel></Border>
 
               <Border Classes="group"><StackPanel>
